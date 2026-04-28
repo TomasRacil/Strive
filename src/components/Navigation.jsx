@@ -10,7 +10,7 @@ const Navigation = ({ activeTab, setActiveTab }) => {
   ];
 
   return (
-    <nav className="glass fixed-bottom-nav">
+    <nav className="fixed-bottom-nav">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
