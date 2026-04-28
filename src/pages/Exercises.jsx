@@ -1,33 +1,33 @@
 import React, { useState } from 'react';
-import { Plus, Search, Trash2, List } from 'lucide-react';
+import { Plus, Search, Trash2, Settings, Info } from 'lucide-react';
 import { useExercises } from '../hooks/useExercises';
-import ExerciseModal from '../components/ExerciseModal';
+import ExerciseDetailModal from '../components/ExerciseDetailModal';
+import { useDialog } from '../context/DialogContext';
 
 const Exercises = () => {
   const { exercises, addExercise, deleteExercise, updateExercise } = useExercises();
+  const { showConfirm } = useDialog();
   const [searchTerm, setSearchTerm] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editingExercise, setEditingExercise] = useState(null);
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [selectedExercise, setSelectedExercise] = useState(null);
 
   const filteredExercises = exercises.filter(e => 
     e.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="page-container fade-in">
-      <header style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="page-container fade-in" style={{ height: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: '0' }}>
+      <header style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <div>
           <h1 className="premium-gradient-text" style={{ fontSize: '32px' }}>Library</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Customize your movements.</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Customize your movements.</p>
         </div>
-        <button className="btn-primary" style={{ padding: '12px' }} onClick={() => setShowModal(true)}>
+        <button className="btn-primary" style={{ padding: '12px' }} onClick={() => setShowNewModal(true)}>
           <Plus size={24} />
         </button>
       </header>
 
-      {/* ... search and list ... */}
-
-      <div className="glass" style={{ display: 'flex', alignItems: 'center', padding: '0 15px', marginBottom: '20px' }}>
+      <div className="glass" style={{ display: 'flex', alignItems: 'center', padding: '0 15px', marginBottom: '20px', flexShrink: 0 }}>
         <Search size={18} color="var(--text-secondary)" />
         <input 
           type="text" 
@@ -38,30 +38,32 @@ const Exercises = () => {
         />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', padding: '10px', overflowX: 'hidden' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '10px 10px 100px 10px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
         {filteredExercises.map(exercise => (
-          <div key={exercise.id} className="glass" style={{ padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setEditingExercise(exercise)}>
-              <h3 style={{ fontSize: '16px' }}>{exercise.name}</h3>
+          <div 
+            key={exercise.id} 
+            className="glass" 
+            style={{ padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+            onClick={() => setSelectedExercise(exercise)}
+          >
+            <div style={{ flex: 1 }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '700' }}>{exercise.name}</h3>
               <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                {exercise.muscles.map(m => m.name).join(', ')}
+                {exercise.muscles?.map(m => m.name).join(', ')}
               </p>
             </div>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px' }}>
-                {exercise.type.replace(/_/g, ' ')}
-              </span>
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
               <button 
-                onClick={() => setEditingExercise(exercise)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                onClick={() => setSelectedExercise(exercise)}
+                style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer' }}
               >
-                <List size={18} />
+                <Info size={18} />
               </button>
               <button 
                 onClick={() => {
-                  if (window.confirm(`Delete ${exercise.name}?`)) {
+                  showConfirm('Delete Exercise', `Are you sure you want to delete ${exercise.name}?`, () => {
                     deleteExercise(exercise.id);
-                  }
+                  });
                 }}
                 style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
               >
@@ -72,22 +74,27 @@ const Exercises = () => {
         ))}
       </div>
 
-      {(showModal || editingExercise) && (
-        <ExerciseModal 
-          initialData={editingExercise}
+      {/* Unified Detail & Config Modal */}
+      {selectedExercise && (
+        <ExerciseDetailModal 
+          exercise={selectedExercise}
           onSave={(data) => {
-            if (editingExercise) {
-              updateExercise(editingExercise.id, data);
-            } else {
-              addExercise(data);
-            }
-            setShowModal(false);
-            setEditingExercise(null);
+            updateExercise(selectedExercise.id, data);
+            setSelectedExercise(null);
           }}
-          onClose={() => {
-            setShowModal(false);
-            setEditingExercise(null);
+          onClose={() => setSelectedExercise(null)}
+        />
+      )}
+
+      {/* New Exercise Modal */}
+      {showNewModal && (
+        <ExerciseDetailModal 
+          exercise={{ name: '', type: 'weight_only', muscles: [{ name: '', engagement: 100 }], forms: [{ name: 'Strict', cues: [] }] }}
+          onSave={(data) => {
+            addExercise(data);
+            setShowNewModal(false);
           }}
+          onClose={() => setShowNewModal(false)}
         />
       )}
     </div>

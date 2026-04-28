@@ -1,42 +1,57 @@
 import React from 'react';
-import { Save, Trash2, Star, X } from 'lucide-react';
+import { Save, Trash2, Star } from 'lucide-react';
+import Modal from './Modal';
 
-const FinishExerciseModal = ({ onSaveWithTemplate, onSaveOnly, onDiscard, onCancel, exerciseName }) => {
+const FinishExerciseModal = ({ onSaveWithTemplate, onSaveOnly, onDiscard, onCancel, exerciseName, isBenchmarkMode = false }) => {
   return (
-    <div className="modal-overlay">
-      <div className="glass modal-content fade-in" style={{ textAlign: 'center' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
-          <button className="btn-secondary" style={{ padding: '8px', borderRadius: '50%' }} onClick={onCancel}>
-            <X size={18} />
-          </button>
-        </div>
-        
-        <div style={{ marginBottom: '25px' }}>
-          <h2 className="premium-gradient-text" style={{ fontSize: '22px', marginBottom: '10px' }}>Finish {exerciseName}</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-            How would you like to record your performance?
-          </p>
-        </div>
+    <Modal 
+      isOpen={true} 
+      onClose={onCancel}
+      title="Complete Exercise"
+      subtitle={exerciseName}
+      maxWidth="400px"
+    >
+      <div style={{ textAlign: 'center', marginBottom: '25px' }}>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+          Select how you want to record your performance.
+        </p>
+      </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <button className="btn-primary" style={{ width: '100%', gap: '12px' }} onClick={onSaveWithTemplate}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {!isBenchmarkMode && (
+          <button 
+            className="btn-primary" 
+            style={{ width: '100%', gap: '12px', padding: '15px' }} 
+            onClick={onSaveWithTemplate}
+          >
             <Star size={18} /> Save & Set as Template
           </button>
-          
-          <button className="btn-secondary" style={{ width: '100%', gap: '12px' }} onClick={onSaveOnly}>
-            <Save size={18} /> Just Save Performance
-          </button>
-          
-          <button 
-            className="btn-secondary" 
-            style={{ width: '100%', gap: '12px', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)' }} 
-            onClick={onDiscard}
-          >
-            <Trash2 size={18} /> Discard These Sets
-          </button>
-        </div>
+        )}
+        
+        <button 
+          className="btn-secondary" 
+          style={{ width: '100%', gap: '12px', padding: '15px' }} 
+          onClick={onSaveOnly}
+        >
+          <Save size={18} /> Just Save Performance
+        </button>
+        
+        <button 
+          className="btn-secondary" 
+          style={{ 
+            width: '100%', 
+            gap: '12px', 
+            padding: '15px',
+            color: '#ef4444', 
+            borderColor: 'rgba(239, 68, 68, 0.2)',
+            background: 'rgba(239, 68, 68, 0.05)'
+          }} 
+          onClick={onDiscard}
+        >
+          <Trash2 size={18} /> Discard These Sets
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 };
 

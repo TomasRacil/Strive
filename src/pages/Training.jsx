@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Plus, Search, ChevronRight, Check, List, Trash2, Zap, X } from 'lucide-react';
+import { Play, Plus, Search, ChevronRight, Check, List, Trash2, Zap, X, Info } from 'lucide-react';
 import { useExercises } from '../hooks/useExercises';
 import { useHistory } from '../hooks/useHistory';
 import CustomSelect from '../components/CustomSelect';
@@ -9,20 +9,23 @@ import FinishExerciseModal from '../components/FinishExerciseModal';
 import ExerciseModal from '../components/ExerciseModal';
 import RestTimer from '../components/RestTimer';
 import TrainingGoalModal from '../components/TrainingGoalModal';
-import { suggestNextWeight, suggestNextReps, getBenchmarkProgression } from '../utils/engine';
+import TutorialModal from '../components/TutorialModal';
+import { suggestNextWeight, suggestNextReps, calculateStartingLoad, calculateNextBenchmarkTarget, calculateTargetLoadFrom1RM, estimate1RM, getCalibratedLoad } from '../utils/engine';
+import { useDialog } from '../context/DialogContext';
 
 const BENCHMARK_EXERCISES = [
-  { id: 'bench_press', name: 'Bench Press', type: 'chest', startRatio: 0.4 },
   { id: 'squat', name: 'Squat', type: 'legs', startRatio: 0.5 },
-  { id: 'pull_up', name: 'Pull-up', type: 'back', startRatio: 0.3 },
+  { id: 'bench_press', name: 'Bench Press', type: 'chest', startRatio: 0.4 },
+  { id: 'deadlift', name: 'Deadlift', type: 'hips/back', startRatio: 0.6 },
   { id: 'overhead_press', name: 'Overhead Press', type: 'shoulders', startRatio: 0.3 },
-  { id: 'deadlift', name: 'Deadlift', type: 'hips/back', startRatio: 0.6 }
+  { id: 'barbell_row', name: 'Barbell Row', type: 'back', startRatio: 0.4 }
 ];
 
 const Training = ({ apiKey, activeSession, setActiveSession }) => {
   const { exercises, updateExercise, addExercise } = useExercises();
   const { history, saveSession } = useHistory();
   const { routines, addRoutine, deleteRoutine } = useRoutines();
+  const { showAlert } = useDialog();
   
   const [currentExerciseId, setCurrentExerciseId] = useState(null);
   const [showSelector, setShowSelector] = useState(false);
@@ -36,9 +39,12 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
   const [isBenchmarkMode, setIsBenchmarkMode] = useState(false);
   const [lastActionTime, setLastActionTime] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
+  const userSex = localStorage.getItem('strive_sex') || 'male';
+  const userBirthDate = localStorage.getItem('strive_birth_date');
   const [trainingGoal, setTrainingGoal] = useState('build_muscle');
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
@@ -54,7 +60,7 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
   useEffect(() => {
     if (currentExercise) {
       if (currentExercise.forms && currentExercise.forms.length > 0) {
-        setSelectedForm(currentExercise.forms[0]);
+        setSelectedForm(currentExercise.forms[0].name || currentExercise.forms[0]);
       }
       
       // Load template OR suggest based on engine
@@ -64,41 +70,102 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
           reps: currentExercise.template.reps, 
           rir: currentExercise.template.rir || 0 
         };
-        setWeight(suggestNextWeight(lastSet, trainingGoal)?.toString() || '');
-        setReps(suggestNextReps(lastSet, trainingGoal)?.toString() || '');
-      } else {
-        setWeight('');
-        setReps('');
+        setWeight(suggestNextWeight(lastSet, trainingGoal, userSex, userBirthDate)?.toString() || '');
+        setReps(suggestNextReps(lastSet, trainingGoal, userSex, userBirthDate)?.toString() || '');
+      } else if (!isBenchmarkMode) {
+        let lastHistorySet = null;
+        if (Array.isArray(history)) {
+          for (let i = 0; i < history.length; i++) {
+            const session = history[i];
+            if (session.sets && Array.isArray(session.sets)) {
+              // Resilient search: check both ID and Name to handle potential data mismatches
+              const exerciseSets = session.sets.filter(s => 
+                s.exerciseId === currentExerciseId || 
+                (s.exerciseName && currentExercise && s.exerciseName === currentExercise.name)
+              );
+              if (exerciseSets.length > 0) {
+                lastHistorySet = exerciseSets[exerciseSets.length - 1];
+                break;
+              }
+            }
+          }
+        }
+        
+        if (lastHistorySet) {
+          // Phase Shift Intelligence: 
+          // If we are moving from a very low-rep set (like a Benchmark) to a higher-rep goal,
+          // calculate the target based on 1RM rather than simple linear progression.
+          const isLowRepSet = lastHistorySet.reps <= 3;
+          const isHighRepGoal = trainingGoal === 'build_muscle' || trainingGoal === 'maintain';
+          
+          if (isLowRepSet && isHighRepGoal) {
+            const e1RM = estimate1RM(parseFloat(lastHistorySet.weight), parseInt(lastHistorySet.reps), parseInt(lastHistorySet.rir || 0), userSex);
+            const target = calculateTargetLoadFrom1RM(e1RM, trainingGoal, userSex, userBirthDate);
+            
+            if (target.weight > 0) {
+              setWeight(target.weight.toString());
+              setReps(target.reps.toString());
+              return; // Exit early if we found a valid recommendation
+            }
+          } else {
+            setWeight(suggestNextWeight(lastHistorySet, trainingGoal, userSex, userBirthDate)?.toString() || '');
+            setReps(suggestNextReps(lastHistorySet, trainingGoal, userSex, userBirthDate)?.toString() || '');
+            return; // Exit early
+          }
+        }
+        
+        // Final Fallback: Calibration via Benchmarks
+        const calibrated = getCalibratedLoad(currentExercise, history, trainingGoal, userSex, userBirthDate);
+        if (calibrated) {
+          setWeight(calibrated.weight.toString());
+          setReps(calibrated.reps.toString());
+        } else {
+          // Absolute fallback: Biometric Guess
+          const userWeight = localStorage.getItem('strive_weight') || '75';
+          const userHeight = localStorage.getItem('strive_height');
+          const userBodyFat = localStorage.getItem('strive_body_fat');
+          const startRatio = currentExercise?.startRatio || 0.4;
+          const guessedWeight = calculateStartingLoad(startRatio, userWeight, userHeight, userBodyFat, userSex);
+          setWeight(guessedWeight.toString());
+          setReps(suggestNextReps(null, trainingGoal, userSex, userBirthDate).toString());
+        }
       }
     }
-  }, [currentExerciseId, currentExercise]);
+  }, [currentExerciseId, currentExercise, isBenchmarkMode, trainingGoal, userSex, history]);
 
   const startBenchmark = () => {
     setIsBenchmarkMode(true);
     setTrainingGoal('build_strength');
     setActiveSession(true);
-    const now = new Date().toISOString();
-    setSessionStartTime(now);
-    setLastActionTime(now);
     
     const firstEx = BENCHMARK_EXERCISES[0];
     const exercise = exercises.find(e => e.id === firstEx.id);
     
     setCurrentExerciseId(firstEx.id);
-    const userWeight = parseFloat(localStorage.getItem('strive_weight') || '75');
+    const userWeight = localStorage.getItem('strive_weight') || '75';
+    const userHeight = localStorage.getItem('strive_height');
+    const userBodyFat = localStorage.getItem('strive_body_fat');
 
     if (exercise?.template) {
       setWeight((Math.floor(exercise.template.weight * 0.5 / 2.5) * 2.5).toString());
       setReps('10');
     } else {
-      // Guess based on bodyweight for a safe first-ever start
-      const guessedWeight = Math.max(20, Math.floor((userWeight * firstEx.startRatio) / 2.5) * 2.5);
+      // Guess based on lean body mass for a safe first-ever start
+      const guessedWeight = calculateStartingLoad(firstEx.startRatio, userWeight, userHeight, userBodyFat, userSex);
       setWeight(guessedWeight.toString());
       setReps('10');
     }
+    setSelectedForm('Strict');
   };
 
-  const nextBenchmarkStep = (rir) => {
+  const [notification, setNotification] = useState(null);
+
+  const notify = (message, type = 'info') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 5000);
+  };
+
+  const nextBenchmarkStep = (rir, setNumber) => {
     if (rir === 0) {
       // Limit found! Move to next muscle group
       const currentIndex = BENCHMARK_EXERCISES.findIndex(ex => ex.id === currentExerciseId);
@@ -112,23 +179,27 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
           setWeight((Math.floor(nextEx.template.weight * 0.5 / 2.5) * 2.5).toString());
           setReps('10');
         } else {
-          const userWeight = parseFloat(localStorage.getItem('strive_weight') || '75');
-          const guessedWeight = Math.max(20, Math.floor((userWeight * nextExData.startRatio) / 2.5) * 2.5);
+          const userWeight = localStorage.getItem('strive_weight') || '75';
+          const userHeight = localStorage.getItem('strive_height');
+          const userBodyFat = localStorage.getItem('strive_body_fat');
+          const guessedWeight = calculateStartingLoad(nextExData.startRatio, userWeight, userHeight, userBodyFat, userSex);
           setWeight(guessedWeight.toString());
           setReps('10');
         }
         
-        alert(`Limit found! Now let's test your ${nextExData.type}.`);
+        setSelectedForm('Strict');
+        notify(`Power limit reached! Calibrating ${nextExData.type}...`, 'success');
       } else {
-        alert("Strength Test complete! Your power profile has been updated.");
-        endTraining();
+        notify("Strength Test complete! Your profile is now fully calibrated.", 'success');
+        setTimeout(() => endTraining(), 2000);
       }
     } else {
-      // Keep pushing
-      const nextWeight = getBenchmarkProgression(parseFloat(weight), rir);
-      setWeight(nextWeight.toString());
-      setReps('3'); // Once we're close to limit, drop reps to 3 for max strength
-      alert(`Great! Let's increase the load to ${nextWeight}kg for the next step.`);
+      // Keep pushing - Dynamic 1RM Protocol
+      const target = calculateNextBenchmarkTarget(setNumber, parseFloat(weight), parseInt(reps), rir, userSex, userBirthDate);
+      
+      setWeight(target.weight.toString());
+      setReps(target.reps.toString());
+      notify(target.message, target.type);
     }
   };
 
@@ -148,9 +219,6 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
     if (pendingAction.type === 'free') {
       setShowSelector(true);
       setActiveSession(true);
-      const now = new Date().toISOString();
-      setSessionStartTime(now);
-      setLastActionTime(now);
     } else if (pendingAction.type === 'routine') {
       const { routine } = pendingAction;
       setActiveRoutine(routine);
@@ -196,6 +264,13 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
   };
 
   const handleFinishExercise = (action) => {
+    let sessionName = 'Free Training';
+    if (isBenchmarkMode) {
+      sessionName = 'Benchmark Test';
+    } else if (activeRoutine) {
+      sessionName = activeRoutine.name;
+    }
+
     if (action === 'template' || action === 'save') {
       const exerciseSets = sets.filter(s => s.exerciseId === currentExerciseId);
       if (action === 'template' && exerciseSets.length > 0) {
@@ -209,18 +284,21 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
         });
       }
       saveSession(sets, {
+        name: sessionName,
         goal: trainingGoal,
         duration: sessionStartTime ? Math.floor((new Date() - new Date(sessionStartTime)) / 1000) : 0
       });
     } else if (action === 'discard') {
       const filteredSets = sets.filter(s => s.exerciseId !== currentExerciseId);
       saveSession(filteredSets, {
+        name: sessionName,
         goal: trainingGoal,
         duration: sessionStartTime ? Math.floor((new Date() - new Date(sessionStartTime)) / 1000) : 0
       });
     } else {
       // Basic save
       saveSession(sets, {
+        name: sessionName,
         goal: trainingGoal,
         duration: sessionStartTime ? Math.floor((new Date() - new Date(sessionStartTime)) / 1000) : 0
       });
@@ -250,12 +328,13 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
 
   const logSet = (goToNextExercise = false) => {
     if (!weight || !reps || rir === null) {
-      alert("Please enter weight, reps and select RIR.");
+      showAlert('Missing Data', 'Please enter weight, reps and select RIR.', 'warning');
       return;
     }
 
     const newSet = {
       exerciseId: currentExerciseId,
+      exerciseName: currentExercise?.name,
       weight: parseFloat(weight),
       reps: parseInt(reps),
       rir,
@@ -263,19 +342,25 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
       timestamp: new Date().toISOString()
     };
 
-    setSets([...sets, newSet]);
-    
-    if (isBenchmarkMode) {
-      nextBenchmarkStep(rir);
-      setRir(null);
-      return;
+    // Start session timer only after first set
+    if (sets.length === 0 && !sessionStartTime) {
+      setSessionStartTime(new Date().toISOString());
     }
 
-    setReps('');
-    setRir(null);
+    setSets([...sets, newSet]);
+    setLastActionTime(new Date().toISOString());
+    const currentExerciseSets = sets.filter(s => s.exerciseId === currentExerciseId);
+    const updatedSetNumber = currentExerciseSets.length + 1;
+
+    if (isBenchmarkMode) {
+      nextBenchmarkStep(rir, updatedSetNumber);
+    } else {
+      setReps('');
+      setRir(null);
     
-    if (goToNextExercise) {
-      finishExercise();
+      if (goToNextExercise) {
+        finishExercise();
+      }
     }
   };
 
@@ -374,7 +459,20 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
         )}
 
         {showGoalModal && (
-          <TrainingGoalModal onSelect={confirmStart} />
+          <TrainingGoalModal 
+            onSelect={confirmStart} 
+            onCancel={() => {
+              setShowGoalModal(false);
+              setPendingAction(null);
+            }} 
+          />
+        )}
+
+        {showTutorial && (
+          <TutorialModal 
+            exercise={currentExercise} 
+            onClose={() => setShowTutorial(false)} 
+          />
         )}
       </div>
     );
@@ -459,7 +557,42 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
 
   // Phase: Active Exercise Logging
   return (
-    <div className="page-container fade-in">
+    <div className="page-container fade-in" style={{ position: 'relative' }}>
+      {notification && (
+        <div 
+          className="glass fade-in" 
+          style={{ 
+            position: 'fixed', 
+            top: '20px', 
+            left: '50%', 
+            transform: 'translateX(-50%)', 
+            zIndex: 15000,
+            padding: '12px 25px',
+            background: notification.type === 'success' ? 'rgba(16, 185, 129, 0.2)' : 
+                        notification.type === 'warning' ? 'rgba(245, 158, 11, 0.2)' : 
+                        'rgba(59, 130, 246, 0.2)',
+            border: `1px solid ${notification.type === 'success' ? '#10b981' : 
+                                 notification.type === 'warning' ? '#f59e0b' : 
+                                 '#3b82f6'}`,
+            color: 'white',
+            borderRadius: '12px',
+            fontSize: '13px',
+            fontWeight: '600',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            backdropFilter: 'blur(12px)',
+            width: 'calc(100% - 40px)',
+            maxWidth: '400px'
+          }}
+        >
+          <Zap size={16} color={notification.type === 'success' ? '#10b981' : 
+                                 notification.type === 'warning' ? '#f59e0b' : 
+                                 '#3b82f6'} />
+          {notification.message}
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
           <span className="premium-gradient-text" style={{ fontWeight: '700', display: 'block' }}>Active Session</span>
@@ -467,10 +600,16 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
             Goal: {trainingGoal.replace('_', ' ')}
           </span>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn-secondary" style={{ padding: '8px 12px' }} onClick={() => setShowSelector(true)}>
-            <List size={16} />
-          </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {isBenchmarkMode ? (
+            <div className="glass" style={{ padding: '6px 12px', fontSize: '10px', fontWeight: '800', color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              Test in Progress
+            </div>
+          ) : (
+            <button className="btn-secondary" style={{ padding: '8px 12px' }} onClick={() => setShowSelector(true)}>
+              <List size={16} />
+            </button>
+          )}
           <button className="btn-secondary" style={{ padding: '8px 16px', fontSize: '12px', color: '#ef4444' }} onClick={endTraining}>End & Save</button>
         </div>
       </div>
@@ -483,10 +622,16 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
       <div className="glass" style={{ padding: '25px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ flex: '1 1 200px' }}>
-            <h2 style={{ fontSize: '24px' }}>{currentExercise?.name}</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+            <h2 style={{ fontSize: '24px', marginBottom: '4px' }}>{currentExercise?.name}</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '12px' }}>
               {currentExercise?.muscles.map(m => m.name).join(', ')}
             </p>
+            <button 
+              onClick={() => setShowTutorial(true)}
+              style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', color: 'var(--primary-color)', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', padding: '6px 12px', borderRadius: '8px' }}
+            >
+              <Info size={14} /> View Technical Guide
+            </button>
           </div>
           <div className="glass" style={{ padding: '8px 12px', fontSize: '12px', fontWeight: '700', color: 'var(--primary-color)', borderRadius: '12px' }}>
             Set {currentSetNumber}{plannedSets ? ` / ${plannedSets}` : ''}
@@ -495,16 +640,21 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
 
         <div style={{ marginBottom: '20px' }}>
           <CustomSelect 
-            label="Execution Form"
+            label={isBenchmarkMode ? "Execution Form (Locked for Test)" : "Execution Form"}
             value={selectedForm}
             onChange={setSelectedForm}
-            options={currentExercise?.forms.map(f => ({ value: f, label: f })) || []}
+            options={currentExercise?.forms.map(f => ({ value: f.name, label: f.name })) || []}
+            disabled={isBenchmarkMode}
           />
         </div>
 
         <div className="responsive-grid" style={{ marginBottom: '20px' }}>
           <div className="input-group">
-            <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Weight (kg)</label>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+              {currentExercise?.type === 'bodyweight_plus_weight' || currentExercise?.type === 'bodyweight_only' 
+                ? 'Added Weight (+kg)' 
+                : 'Weight (kg)'}
+            </label>
             <input 
               type="number" 
               placeholder="0" 
@@ -554,15 +704,17 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
             onClick={() => logSet(false)}
             style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
           >
-            Log & Next Set <ChevronRight size={18} />
+            {isBenchmarkMode ? 'Record Progress' : 'Log & Next Set'} <ChevronRight size={18} />
           </button>
-          <button 
-            className="btn-secondary" 
-            onClick={() => logSet(true)}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-          >
-            Log & Finish Exercise <Check size={18} />
-          </button>
+          {!isBenchmarkMode && (
+            <button 
+              className="btn-secondary" 
+              onClick={() => logSet(true)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+            >
+              Log & Finish Exercise <Check size={18} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -626,10 +778,18 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
       {showFinishModal && (
         <FinishExerciseModal 
           exerciseName={currentExercise?.name}
+          isBenchmarkMode={isBenchmarkMode}
           onSaveWithTemplate={() => handleFinishExercise('template')}
           onSaveOnly={() => handleFinishExercise('save')}
           onDiscard={() => handleFinishExercise('discard')}
           onCancel={() => setShowFinishModal(false)}
+        />
+      )}
+
+      {showTutorial && currentExercise && (
+        <TutorialModal 
+          exercise={currentExercise} 
+          onClose={() => setShowTutorial(false)} 
         />
       )}
     </div>

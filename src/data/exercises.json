@@ -1,86 +1,1082 @@
 [
   {
-    "id": "weighted_dips",
-    "name": "Weighted Dips",
-    "type": "bodyweight_plus_weight",
-    "muscles": [
-      { "name": "Chest", "engagement": 70 },
-      { "name": "Triceps", "engagement": 30 }
-    ],
-    "forms": ["Strict", "Cheat", "Paused"]
-  },
-  {
-    "id": "pull_ups",
-    "name": "Pull-ups",
-    "type": "bodyweight_plus_weight",
-    "muscles": [
-      { "name": "Back", "engagement": 65 },
-      { "name": "Biceps", "engagement": 35 }
-    ],
-    "forms": ["Strict", "Explosive", "Slow Eccentric"]
-  },
-  {
     "id": "bench_press",
     "name": "Bench Press",
     "type": "weight_only",
     "muscles": [
-      { "name": "Chest", "engagement": 60 },
-      { "name": "Front Delts", "engagement": 20 },
-      { "name": "Triceps", "engagement": 20 }
+      {
+        "name": "Chest",
+        "engagement": 60
+      },
+      {
+        "name": "Front Delts",
+        "engagement": 25
+      },
+      {
+        "name": "Triceps",
+        "engagement": 15
+      }
     ],
-    "forms": ["Competition", "Touch & Go", "Paused"]
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "Bar to mid-chest",
+          "Keep elbows tucked 45°",
+          "Maintain leg drive"
+        ],
+        "hasVisualization": true,
+        "tutorialId": "bench_press"
+      },
+      {
+        "name": "Paused",
+        "cues": [
+          "1 second pause on chest",
+          "Maintain tightness",
+          "Explode off the chest"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Close Grip",
+        "cues": [
+          "Hands shoulder-width",
+          "Elbows close to ribs",
+          "Focus on triceps"
+        ],
+        "hasVisualization": false
+      }
+    ]
   },
   {
-    "id": "squats",
-    "name": "Barbell Squats",
+    "id": "squat",
+    "name": "Squat",
     "type": "weight_only",
     "muscles": [
-      { "name": "Quads", "engagement": 60 },
-      { "name": "Glutes", "engagement": 25 },
-      { "name": "Adductors", "engagement": 15 }
+      {
+        "name": "Quads",
+        "engagement": 50
+      },
+      {
+        "name": "Glutes",
+        "engagement": 30
+      },
+      {
+        "name": "Hamstrings",
+        "engagement": 10
+      },
+      {
+        "name": "Core",
+        "engagement": 10
+      }
     ],
-    "forms": ["High Bar", "Low Bar", "Paused"]
+    "forms": [
+      {
+        "name": "High Bar",
+        "cues": [
+          "Bar on traps",
+          "Upright torso",
+          "Knees forward"
+        ],
+        "hasVisualization": true,
+        "tutorialId": "squat"
+      },
+      {
+        "name": "Low Bar",
+        "cues": [
+          "Bar on rear delts",
+          "Hip hinge first",
+          "Lean forward"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Paused",
+        "cues": [
+          "Pause in the hole",
+          "Drive through heels",
+          "Chest up"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "pull_up",
+    "name": "Pull-ups",
+    "type": "bodyweight_plus_weight",
+    "muscles": [
+      {
+        "name": "Lats",
+        "engagement": 60
+      },
+      {
+        "name": "Upper Back",
+        "engagement": 20
+      },
+      {
+        "name": "Biceps",
+        "engagement": 20
+      }
+    ],
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "Chest to bar",
+          "Dead hang at bottom",
+          "No kipping"
+        ],
+        "hasVisualization": true,
+        "tutorialId": "pull_up"
+      },
+      {
+        "name": "Chin-up",
+        "cues": [
+          "Supinated grip",
+          "Focus on biceps",
+          "Full stretch"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Neutral Grip",
+        "cues": [
+          "Palms facing each other",
+          "Easier on shoulders",
+          "Elbows forward"
+        ],
+        "hasVisualization": false
+      }
+    ]
   },
   {
     "id": "overhead_press",
     "name": "Overhead Press",
     "type": "weight_only",
     "muscles": [
-      { "name": "Shoulders", "engagement": 70 },
-      { "name": "Triceps", "engagement": 20 },
-      { "name": "Upper Chest", "engagement": 10 }
+      {
+        "name": "Front Delts",
+        "engagement": 50
+      },
+      {
+        "name": "Triceps",
+        "engagement": 20
+      },
+      {
+        "name": "Core",
+        "engagement": 20
+      },
+      {
+        "name": "Upper Chest",
+        "engagement": 10
+      }
     ],
-    "forms": ["Strict", "Push Press", "Paused"]
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "Elbows forward",
+          "Squeeze glutes",
+          "Head through at top"
+        ],
+        "hasVisualization": true,
+        "tutorialId": "overhead_press"
+      },
+      {
+        "name": "Push Press",
+        "cues": [
+          "Leg drive",
+          "Aggressive dip",
+          "Fast lockout"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Paused",
+        "cues": [
+          "Pause at chin height",
+          "Maintain vertical forearms"
+        ],
+        "hasVisualization": false
+      }
+    ]
   },
   {
     "id": "deadlift",
     "name": "Deadlift",
     "type": "weight_only",
     "muscles": [
-      { "name": "Hamstrings", "engagement": 40 },
-      { "name": "Glutes", "engagement": 30 },
-      { "name": "Lower Back", "engagement": 30 }
+      {
+        "name": "Hamstrings",
+        "engagement": 40
+      },
+      {
+        "name": "Glutes",
+        "engagement": 30
+      },
+      {
+        "name": "Lower Back",
+        "engagement": 30
+      }
     ],
-    "forms": ["Conventional", "Sumo", "Deficit"]
+    "forms": [
+      {
+        "name": "Conventional",
+        "cues": [
+          "Feet hip-width",
+          "Bar over mid-foot",
+          "Pull slack out"
+        ],
+        "hasVisualization": true,
+        "tutorialId": "deadlift"
+      },
+      {
+        "name": "Sumo",
+        "cues": [
+          "Wide stance",
+          "Upright torso",
+          "Knees out"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Deficit",
+        "cues": [
+          "Stand on plate",
+          "Extra hip depth",
+          "Control the start"
+        ],
+        "hasVisualization": false
+      }
+    ]
   },
   {
     "id": "bulgarian_split_squat",
     "name": "Bulgarian Split Squats",
     "type": "weight_only",
     "muscles": [
-      { "name": "Quads", "engagement": 50 },
-      { "name": "Glutes", "engagement": 40 },
-      { "name": "Adductors", "engagement": 10 }
+      {
+        "name": "Quads",
+        "engagement": 50
+      },
+      {
+        "name": "Glutes",
+        "engagement": 40
+      },
+      {
+        "name": "Adductors",
+        "engagement": 10
+      }
     ],
-    "forms": ["Strict", "Deficit", "Explosive"]
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "Elevate back foot",
+          "Knee to floor",
+          "Keep torso upright"
+        ],
+        "hasVisualization": false
+      }
+    ]
   },
   {
     "id": "bicep_curls",
     "name": "Dumbbell Curls",
     "type": "weight_only",
     "muscles": [
-      { "name": "Biceps", "engagement": 100 }
+      {
+        "name": "Biceps",
+        "engagement": 100
+      }
     ],
-    "forms": ["Strict", "Hammer", "Incline"]
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "Elbows pinned",
+          "No swinging",
+          "Squeeze at top"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Hammer",
+        "cues": [
+          "Neutral grip",
+          "Focus on brachialis",
+          "Control the negative"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "barbell_row",
+    "name": "Barbell Row",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Lats",
+        "engagement": 40
+      },
+      {
+        "name": "Upper Back",
+        "engagement": 40
+      },
+      {
+        "name": "Biceps",
+        "engagement": 10
+      },
+      {
+        "name": "Lower Back",
+        "engagement": 10
+      }
+    ],
+    "forms": [
+      {
+        "name": "Pendlay",
+        "cues": [
+          "Torso parallel to floor",
+          "Pull from dead stop",
+          "Explosive pull to lower chest"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Yates",
+        "cues": [
+          "Torso at 45° angle",
+          "Underhand grip",
+          "Pull to lower stomach"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "romanian_deadlift",
+    "name": "Romanian Deadlift",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Hamstrings",
+        "engagement": 60
+      },
+      {
+        "name": "Glutes",
+        "engagement": 30
+      },
+      {
+        "name": "Lower Back",
+        "engagement": 10
+      }
+    ],
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "Slight bend in knees",
+          "Hinge at hips",
+          "Push hips back until deep stretch"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "dips",
+    "name": "Dips",
+    "type": "bodyweight_plus_weight",
+    "muscles": [
+      {
+        "name": "Lower Chest",
+        "engagement": 50
+      },
+      {
+        "name": "Triceps",
+        "engagement": 30
+      },
+      {
+        "name": "Front Delts",
+        "engagement": 20
+      }
+    ],
+    "forms": [
+      {
+        "name": "Chest Focus",
+        "cues": [
+          "Lean forward",
+          "Elbows slightly flared",
+          "Deep stretch at bottom"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Tricep Focus",
+        "cues": [
+          "Upright torso",
+          "Elbows tucked tight",
+          "Lock out at top"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "lateral_raises",
+    "name": "Lateral Raises",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Side Delts",
+        "engagement": 80
+      },
+      {
+        "name": "Traps",
+        "engagement": 20
+      }
+    ],
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "Slight lean forward",
+          "Lead with elbows",
+          "Stop at shoulder height"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Cable",
+        "cues": [
+          "Set cable at bottom",
+          "Pull across body",
+          "Constant tension"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "leg_press",
+    "name": "Leg Press",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Quads",
+        "engagement": 60
+      },
+      {
+        "name": "Glutes",
+        "engagement": 30
+      },
+      {
+        "name": "Hamstrings",
+        "engagement": 10
+      }
+    ],
+    "forms": [
+      {
+        "name": "Standard",
+        "cues": [
+          "Feet shoulder-width",
+          "Don't lock out knees",
+          "Control the descent"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "High Stance",
+        "cues": [
+          "Feet high on platform",
+          "Focus on glutes and hamstrings",
+          "Drive through heels"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "tricep_pushdown",
+    "name": "Tricep Pushdown",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Triceps",
+        "engagement": 100
+      }
+    ],
+    "forms": [
+      {
+        "name": "Rope",
+        "cues": [
+          "Pull apart at bottom",
+          "Elbows glued to sides",
+          "Full extension"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Straight Bar",
+        "cues": [
+          "Overhand grip",
+          "Keep wrists straight",
+          "Controlled eccentric"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "lat_pulldown",
+    "name": "Lat Pulldown",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Lats",
+        "engagement": 60
+      },
+      {
+        "name": "Upper Back",
+        "engagement": 20
+      },
+      {
+        "name": "Biceps",
+        "engagement": 20
+      }
+    ],
+    "forms": [
+      {
+        "name": "Wide Grip",
+        "cues": [
+          "Pull to upper chest",
+          "Squeeze shoulder blades",
+          "Slight lean back"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Close Grip",
+        "cues": [
+          "V-bar attachment",
+          "Keep elbows tight",
+          "Stretch lats at top"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "face_pulls",
+    "name": "Face Pulls",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Rear Delts",
+        "engagement": 50
+      },
+      {
+        "name": "Traps",
+        "engagement": 30
+      },
+      {
+        "name": "Rotator Cuff",
+        "engagement": 20
+      }
+    ],
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "Pull rope towards eyes",
+          "Externally rotate shoulders",
+          "Hold contraction for 1 sec"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "leg_extensions",
+    "name": "Leg Extensions",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Quads",
+        "engagement": 100
+      }
+    ],
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "Toes pointed up",
+          "Squeeze at the top",
+          "Slow descent"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "leg_curls",
+    "name": "Leg Curls",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Hamstrings",
+        "engagement": 100
+      }
+    ],
+    "forms": [
+      {
+        "name": "Seated",
+        "cues": [
+          "Keep back flat against pad",
+          "Full range of motion",
+          "Squeeze at the bottom"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Lying",
+        "cues": [
+          "Hips pushed into pad",
+          "Point toes",
+          "Don't use lower back momentum"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "calf_raises",
+    "name": "Calf Raises",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Calves",
+        "engagement": 100
+      }
+    ],
+    "forms": [
+      {
+        "name": "Standing",
+        "cues": [
+          "Focus on gastrocnemius",
+          "Full stretch at bottom",
+          "Explode up onto toes"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Seated",
+        "cues": [
+          "Focus on soleus",
+          "Slow and controlled",
+          "Pause at the bottom"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "incline_bench_press",
+    "name": "Incline Bench Press",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Upper Chest",
+        "engagement": 60
+      },
+      {
+        "name": "Front Delts",
+        "engagement": 30
+      },
+      {
+        "name": "Triceps",
+        "engagement": 10
+      }
+    ],
+    "forms": [
+      {
+        "name": "Barbell",
+        "cues": [
+          "Bench at 30-45 degrees",
+          "Touch upper chest",
+          "Drive feet into floor"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Dumbbell",
+        "cues": [
+          "Deeper stretch at bottom",
+          "Squeeze at the top",
+          "Keep elbows tucked slightly"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "cable_crossover",
+    "name": "Cable Crossover",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Chest",
+        "engagement": 90
+      },
+      {
+        "name": "Front Delts",
+        "engagement": 10
+      }
+    ],
+    "forms": [
+      {
+        "name": "High to Low",
+        "cues": [
+          "Focus on lower chest",
+          "Slight bend in elbows",
+          "Cross hands at the bottom"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Low to High",
+        "cues": [
+          "Focus on upper chest",
+          "Pull upward and inward",
+          "Keep chest proud"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "seated_cable_row",
+    "name": "Seated Cable Row",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Lats",
+        "engagement": 50
+      },
+      {
+        "name": "Mid Back",
+        "engagement": 30
+      },
+      {
+        "name": "Biceps",
+        "engagement": 20
+      }
+    ],
+    "forms": [
+      {
+        "name": "V-Grip",
+        "cues": [
+          "Keep torso stationary",
+          "Pull to lower stomach",
+          "Squeeze shoulder blades together"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Wide Grip",
+        "cues": [
+          "Pull to lower chest",
+          "Focus on rear delts and rhomboids",
+          "Keep elbows high"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "t_bar_row",
+    "name": "T-Bar Row",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Lats",
+        "engagement": 40
+      },
+      {
+        "name": "Mid Back",
+        "engagement": 40
+      },
+      {
+        "name": "Biceps",
+        "engagement": 20
+      }
+    ],
+    "forms": [
+      {
+        "name": "Chest Supported",
+        "cues": [
+          "Pad against sternum",
+          "Pull weight up and squeeze",
+          "Don't use momentum"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Free Standing",
+        "cues": [
+          "Hinge at hips",
+          "Keep back straight",
+          "Pull plates to chest"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "hack_squat",
+    "name": "Hack Squat",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Quads",
+        "engagement": 70
+      },
+      {
+        "name": "Glutes",
+        "engagement": 20
+      },
+      {
+        "name": "Hamstrings",
+        "engagement": 10
+      }
+    ],
+    "forms": [
+      {
+        "name": "Machine",
+        "cues": [
+          "Back flat against pad",
+          "Go below parallel",
+          "Drive through mid-foot"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Barbell",
+        "cues": [
+          "Bar behind legs",
+          "Upright torso",
+          "Drag bar up calves"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "hip_thrust",
+    "name": "Hip Thrust",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Glutes",
+        "engagement": 70
+      },
+      {
+        "name": "Hamstrings",
+        "engagement": 20
+      },
+      {
+        "name": "Lower Back",
+        "engagement": 10
+      }
+    ],
+    "forms": [
+      {
+        "name": "Barbell",
+        "cues": [
+          "Shoulders on bench",
+          "Chin tucked",
+          "Full lockout at top"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Single Leg",
+        "cues": [
+          "One foot planted",
+          "Keep hips level",
+          "Squeeze glute hard"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "skull_crushers",
+    "name": "Skull Crushers",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Triceps",
+        "engagement": 100
+      }
+    ],
+    "forms": [
+      {
+        "name": "EZ Bar",
+        "cues": [
+          "Lower bar to forehead",
+          "Keep elbows pointing up",
+          "Extend fully at top"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Dumbbell",
+        "cues": [
+          "Neutral grip",
+          "Lower past ears for deeper stretch",
+          "Control the eccentric"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "preacher_curls",
+    "name": "Preacher Curls",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Biceps",
+        "engagement": 100
+      }
+    ],
+    "forms": [
+      {
+        "name": "EZ Bar",
+        "cues": [
+          "Armpits flush with pad",
+          "Full stretch at bottom",
+          "Don't lean back to lift"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Machine",
+        "cues": [
+          "Align elbows with axis of rotation",
+          "Constant tension",
+          "Squeeze at peak contraction"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "shrugs",
+    "name": "Shrugs",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Traps",
+        "engagement": 100
+      }
+    ],
+    "forms": [
+      {
+        "name": "Dumbbell",
+        "cues": [
+          "Arms at sides",
+          "Shrug straight up",
+          "Pause at the top"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Barbell",
+        "cues": [
+          "Overhand grip",
+          "Keep chest up",
+          "Do not roll shoulders"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "upright_row",
+    "name": "Upright Row",
+    "type": "weight_only",
+    "muscles": [
+      {
+        "name": "Side Delts",
+        "engagement": 50
+      },
+      {
+        "name": "Traps",
+        "engagement": 30
+      },
+      {
+        "name": "Front Delts",
+        "engagement": 20
+      }
+    ],
+    "forms": [
+      {
+        "name": "Wide Grip Barbell",
+        "cues": [
+          "Grip wider than shoulders",
+          "Lead with elbows",
+          "Pull to lower chest level"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Cable",
+        "cues": [
+          "Use straight bar attachment",
+          "Keep bar close to body",
+          "Smooth continuous motion"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "hanging_leg_raise",
+    "name": "Hanging Leg Raise",
+    "type": "bodyweight_only",
+    "muscles": [
+      {
+        "name": "Lower Abs",
+        "engagement": 70
+      },
+      {
+        "name": "Hip Flexors",
+        "engagement": 30
+      }
+    ],
+    "forms": [
+      {
+        "name": "Strict Toes to Bar",
+        "cues": [
+          "Keep legs straight",
+          "Engage lats to prevent swinging",
+          "Touch toes to bar"
+        ],
+        "hasVisualization": false
+      },
+      {
+        "name": "Bent Knee",
+        "cues": [
+          "Bring knees to chest",
+          "Roll pelvis upward",
+          "Control the descent"
+        ],
+        "hasVisualization": false
+      }
+    ]
   }
 ]

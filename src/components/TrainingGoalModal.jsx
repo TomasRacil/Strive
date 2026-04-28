@@ -1,7 +1,8 @@
 import React from 'react';
 import { Target, Dumbbell, Zap, ShieldCheck } from 'lucide-react';
+import Modal from './Modal';
 
-const TrainingGoalModal = ({ onSelect }) => {
+const TrainingGoalModal = ({ onSelect, onCancel }) => {
   const goals = [
     { 
       id: 'build_muscle', 
@@ -27,50 +28,54 @@ const TrainingGoalModal = ({ onSelect }) => {
   ];
 
   return (
-    <div className="modal-overlay">
-      <div className="glass modal-content fade-in">
-        <header style={{ textAlign: 'center', marginBottom: '10px' }}>
-          <Target size={40} className="premium-gradient-text" style={{ marginBottom: '15px' }} />
-          <h2 style={{ fontSize: '22px', fontWeight: '800' }}>Select Session Goal</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>How should Strive suggest your loads today?</p>
-        </header>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '10px' }}>
-          {goals.map(goal => (
-            <div 
-              key={goal.id} 
-              className="glass clickable-card" 
-              style={{ 
-                flexDirection: 'row', 
-                justifyContent: 'flex-start', 
-                gap: '20px', 
-                padding: '20px',
-                textAlign: 'left'
-              }}
-              onClick={() => onSelect(goal.id)}
-            >
-              <div style={{ 
-                width: '50px', 
-                height: '50px', 
-                borderRadius: '12px', 
-                background: `${goal.color}22`, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                color: goal.color,
-                border: `1px solid ${goal.color}44`
-              }}>
-                {goal.icon}
-              </div>
-              <div>
-                <div style={{ fontWeight: '700', fontSize: '16px' }}>{goal.label}</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{goal.desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+    <Modal 
+      isOpen={true} 
+      onClose={onCancel}
+      title="Session Focus"
+      subtitle="Engine Calibration"
+      maxWidth="450px"
+    >
+      <div style={{ textAlign: 'center', marginBottom: '25px' }}>
+        <Target size={40} className="premium-gradient-text" style={{ marginBottom: '10px' }} />
+        <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Choose how Strive should calculate your load suggestions today.</p>
       </div>
-    </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {goals.map(goal => (
+          <div 
+            key={goal.id} 
+            className="glass clickable-card" 
+            style={{ 
+              flexDirection: 'row', 
+              justifyContent: 'flex-start', 
+              gap: '15px', 
+              padding: '15px',
+              textAlign: 'left',
+              border: '1px solid rgba(255,255,255,0.05)'
+            }}
+            onClick={() => onSelect(goal.id)}
+          >
+            <div style={{ 
+              width: '44px', 
+              height: '44px', 
+              borderRadius: '10px', 
+              background: `${goal.color}15`, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              color: goal.color,
+              border: `1px solid ${goal.color}33`
+            }}>
+              {goal.icon}
+            </div>
+            <div>
+              <div style={{ fontWeight: '700', fontSize: '15px' }}>{goal.label}</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{goal.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Modal>
   );
 };
 

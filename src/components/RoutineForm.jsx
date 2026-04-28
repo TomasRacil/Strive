@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { X, Plus, Trash2, Check, Search } from 'lucide-react';
 import { useExercises } from '../hooks/useExercises';
+import { useDialog } from '../context/DialogContext';
 
 const RoutineForm = ({ onSave, onCancel, initialData }) => {
   const { exercises } = useExercises();
+  const { showAlert } = useDialog();
   const [name, setName] = useState(initialData?.name || '');
   const [selectedExercises, setSelectedExercises] = useState(initialData?.exercises || []);
   const [showExercisePicker, setShowExercisePicker] = useState(false);
@@ -31,11 +33,11 @@ const RoutineForm = ({ onSave, onCancel, initialData }) => {
 
   const handleSave = () => {
     if (!name.trim()) {
-      alert("Please enter a routine name.");
+      showAlert('Missing Information', 'Please enter a routine name.', 'warning');
       return;
     }
     if (selectedExercises.length === 0) {
-      alert("Please add at least one exercise.");
+      showAlert('Missing Information', 'Please add at least one exercise.', 'warning');
       return;
     }
     onSave({

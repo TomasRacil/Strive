@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 
-const CustomSelect = ({ value, onChange, options, label }) => {
+const CustomSelect = ({ value, onChange, options, label, disabled = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectRef = useRef(null);
 
@@ -18,25 +18,26 @@ const CustomSelect = ({ value, onChange, options, label }) => {
   }, []);
 
   return (
-    <div className="custom-select-container" ref={selectRef}>
+    <div className="custom-select-container" ref={selectRef} style={{ opacity: disabled ? 0.6 : 1, pointerEvents: disabled ? 'none' : 'auto' }}>
       {label && <label style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>{label}</label>}
       <div 
         className="glass custom-select-header" 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
         style={{ 
           padding: '12px 15px', 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
-          cursor: 'pointer',
-          border: isOpen ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)'
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          border: isOpen ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)',
+          background: disabled ? 'rgba(255,255,255,0.02)' : 'var(--glass-bg)'
         }}
       >
-        <span>{selectedOption ? selectedOption.label : 'Select option'}</span>
-        <ChevronDown size={18} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }} />
+        <span style={{ fontSize: '14px', fontWeight: '500' }}>{selectedOption ? selectedOption.label : 'Select option'}</span>
+        {!disabled && <ChevronDown size={18} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }} />}
       </div>
 
-      {isOpen && (
+      {isOpen && !disabled && (
         <div className="dropdown-glass custom-select-options fade-in" style={{ 
           position: 'absolute', 
           top: '100%', 
@@ -45,7 +46,9 @@ const CustomSelect = ({ value, onChange, options, label }) => {
           marginTop: '8px',
           zIndex: 100,
           maxHeight: '200px',
-          overflowY: 'auto'
+          overflowY: 'auto',
+          borderRadius: '12px',
+          overflow: 'hidden'
         }}>
           {options.map(option => (
             <div 
@@ -58,8 +61,10 @@ const CustomSelect = ({ value, onChange, options, label }) => {
               style={{ 
                 padding: '12px 15px',
                 cursor: 'pointer',
+                fontSize: '13px',
                 background: value === option.value ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                borderBottom: '1px solid var(--glass-border)'
+                borderBottom: '1px solid var(--glass-border)',
+                transition: 'all 0.2s'
               }}
             >
               {option.label}

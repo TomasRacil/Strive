@@ -14,6 +14,7 @@ export const useHistory = () => {
     const currentHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     const newSession = {
       id: Date.now().toString(),
+      name: metadata.name || 'Workout', // Support descriptive names
       timestamp: new Date().toISOString(),
       sets,
       goal: metadata.goal || 'build_muscle',
