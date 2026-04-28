@@ -39,10 +39,34 @@ export const calculateStartingLoad = (startRatio, weight, height, bodyFat, sex =
   return guessedWeight;
 };
 
-export const estimate1RM = (weight, reps, rir = 0, sex = 'male') => {
+export const getBodyweightLoadFactor = (exerciseId) => {
+  const factors = {
+    'pushups': 0.65,
+    'pike_pushups': 0.50,
+    'pullups': 1.0,
+    'dips': 0.90,
+    'inverted_row': 0.50,
+    'bw_squat': 0.0, // Hard to estimate 1RM from BW Squats alone
+    'lunges': 0.40,
+    'glute_bridge': 0.30
+  };
+  return factors[exerciseId] || 0;
+};
+
+export const estimate1RM = (weight, reps, rir = 0, sex = 'male', exerciseId = null) => {
   const actualReps = reps + rir;
   if (actualReps === 0) return 0;
-  return weight / (1.0278 - (0.0278 * actualReps));
+
+  let effectiveWeight = weight;
+  
+  // If weight is 0 or explicitly bodyweight-based, calculate based on BW
+  if (exerciseId && (weight === 0 || weight === 'BW')) {
+    const userWeight = parseFloat(localStorage.getItem('strive_weight') || '75');
+    const factor = getBodyweightLoadFactor(exerciseId);
+    effectiveWeight = userWeight * factor;
+  }
+
+  return effectiveWeight / (1.0278 - (0.0278 * actualReps));
 };
 
 export const suggestNextWeight = (lastSet, goal = 'build_muscle', sex = 'male', birthDate = null) => {
@@ -183,43 +207,42 @@ export const calculateTargetLoadFrom1RM = (e1RM, goal, sex = 'male', birthDate =
 };
 
 const MUSCLE_TO_BENCHMARK = {
-  'Chest': 'bench_press',
-  'Triceps': 'bench_press',
-  'Front Delts': 'bench_press',
-  'Quads': 'squat',
-  'Glutes': 'squat',
-  'Hamstrings': 'deadlift',
-  'Lower Back': 'deadlift',
-  'Upper Back': 'barbell_row',
-  'Back': 'barbell_row',
-  'Lats': 'barbell_row',
-  'Shoulders': 'overhead_press',
-  'Biceps': 'barbell_row'
+  'Chest': ['bench_press', 'pushups'],
+  'Triceps': ['bench_press', 'pushups'],
+  'Front Delts': ['bench_press', 'pushups', 'pike_pushups'],
+  'Quads': ['squat', 'bw_squat'],
+  'Glutes': ['squat', 'glute_bridge', 'bw_squat'],
+  'Hamstrings': ['deadlift', 'glute_bridge'],
+  'Lower Back': ['deadlift'],
+  'Upper Back': ['barbell_row', 'doorway_row', 'inverted_row'],
+  'Back': ['barbell_row', 'doorway_row', 'inverted_row', 'pullups'],
+  'Lats': ['barbell_row', 'pullups'],
+  'Shoulders': ['overhead_press', 'pike_pushups'],
+  'Biceps': ['barbell_row', 'inverted_row']
 };
 
 export const getCalibratedLoad = (exercise, history, goal, sex, birthDate) => {
   if (!exercise || !Array.isArray(history)) return null;
   
   const primaryMuscle = exercise.muscles?.[0]?.name;
-  const benchmarkId = MUSCLE_TO_BENCHMARK[primaryMuscle];
-  if (!benchmarkId) return null;
+  const benchmarkIds = MUSCLE_TO_BENCHMARK[primaryMuscle];
+  if (!benchmarkIds) return null;
   
   let bestE1RM = 0;
   
-  // Search history for the best 1RM of the benchmark exercise
+  // Search history for the best 1RM of any relevant benchmark exercise
   history.forEach(session => {
     if (session.sets) {
       session.sets.forEach(set => {
-        // Match by ID, Name, or if it's a known benchmark exercise
-        const idMatch = set.exerciseId === benchmarkId;
-        const nameMatch = set.exerciseName && set.exerciseName.toLowerCase().includes(benchmarkId.replace('_', ' '));
-        // Fallback for older data that might not have ID or Name perfectly set
-        const legacyMatch = !set.exerciseId && set.name && set.name.toLowerCase().includes(benchmarkId.replace('_', ' '));
-        
-        if (idMatch || nameMatch || legacyMatch) {
-          const e1rm = estimate1RM(parseFloat(set.weight), parseInt(set.reps), parseInt(set.rir || 0), sex);
-          if (!isNaN(e1rm) && e1rm > bestE1RM) bestE1RM = e1rm;
-        }
+        benchmarkIds.forEach(benchmarkId => {
+          const idMatch = set.exerciseId === benchmarkId;
+          const nameMatch = set.exerciseName && set.exerciseName.toLowerCase().includes(benchmarkId.replace('_', ' '));
+          
+          if (idMatch || nameMatch) {
+            const e1rm = estimate1RM(parseFloat(set.weight || 0), parseInt(set.reps), parseInt(set.rir || 0), sex, benchmarkId);
+            if (!isNaN(e1rm) && e1rm > bestE1RM) bestE1RM = e1rm;
+          }
+        });
       });
     }
   });

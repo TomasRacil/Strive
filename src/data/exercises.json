@@ -1078,5 +1078,181 @@
         "hasVisualization": false
       }
     ]
+  },
+  {
+    "id": "pushups",
+    "name": "Pushups",
+    "type": "bodyweight_only",
+    "muscles": [
+      {
+        "name": "Chest",
+        "engagement": 60
+      },
+      {
+        "name": "Front Delts",
+        "engagement": 25
+      },
+      {
+        "name": "Triceps",
+        "engagement": 15
+      }
+    ],
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "Plank position",
+          "Chest to floor",
+          "Lockout at top"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "bw_squat",
+    "name": "Bodyweight Squat",
+    "type": "bodyweight_only",
+    "muscles": [
+      {
+        "name": "Quads",
+        "engagement": 60
+      },
+      {
+        "name": "Glutes",
+        "engagement": 30
+      },
+      {
+        "name": "Hamstrings",
+        "engagement": 10
+      }
+    ],
+    "forms": [
+      {
+        "name": "Standard",
+        "cues": [
+          "Deep squat",
+          "Back straight",
+          "Drive through heels"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "glute_bridge",
+    "name": "Glute Bridge",
+    "type": "bodyweight_only",
+    "muscles": [
+      {
+        "name": "Glutes",
+        "engagement": 80
+      },
+      {
+        "name": "Hamstrings",
+        "engagement": 20
+      }
+    ],
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "Squeeze glutes at top",
+          "Feet flat",
+          "Hips to ceiling"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "pike_pushups",
+    "name": "Pike Pushups",
+    "type": "bodyweight_only",
+    "muscles": [
+      {
+        "name": "Front Delts",
+        "engagement": 60
+      },
+      {
+        "name": "Triceps",
+        "engagement": 30
+      },
+      {
+        "name": "Upper Chest",
+        "engagement": 10
+      }
+    ],
+    "forms": [
+      {
+        "name": "Standard",
+        "cues": [
+          "Hips high",
+          "Head towards floor",
+          "Vertical press"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "inverted_row",
+    "name": "Inverted Row",
+    "type": "bodyweight_only",
+    "muscles": [
+      {
+        "name": "Lats",
+        "engagement": 50
+      },
+      {
+        "name": "Upper Back",
+        "engagement": 40
+      },
+      {
+        "name": "Biceps",
+        "engagement": 10
+      }
+    ],
+    "forms": [
+      {
+        "name": "Standard",
+        "cues": [
+          "Bar at waist height",
+          "Chest to bar",
+          "Straight body"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "doorway_row",
+    "name": "Doorway Row",
+    "type": "bodyweight_only",
+    "muscles": [
+      {
+        "name": "Lats",
+        "engagement": 50
+      },
+      {
+        "name": "Upper Back",
+        "engagement": 40
+      },
+      {
+        "name": "Biceps",
+        "engagement": 10
+      }
+    ],
+    "forms": [
+      {
+        "name": "Standard",
+        "cues": [
+          "Lean back",
+          "Pull chest to doorway",
+          "Squeeze shoulder blades"
+        ],
+        "hasVisualization": false
+      }
+    ]
   }
 ]

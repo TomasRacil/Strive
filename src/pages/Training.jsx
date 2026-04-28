@@ -21,6 +21,14 @@ const BENCHMARK_EXERCISES = [
   { id: 'barbell_row', name: 'Barbell Row', type: 'back', startRatio: 0.4 }
 ];
 
+const HOME_BENCHMARK_EXERCISES = [
+  { id: 'bw_squat', name: 'Bodyweight Squat', type: 'legs', isBodyweight: true },
+  { id: 'pushups', name: 'Pushups', type: 'chest', isBodyweight: true },
+  { id: 'glute_bridge', name: 'Glute Bridge', type: 'hips', isBodyweight: true },
+  { id: 'pike_pushups', name: 'Pike Pushups', type: 'shoulders', isBodyweight: true },
+  { id: 'doorway_row', name: 'Doorway Row', type: 'back', isBodyweight: true }
+];
+
 const Training = ({ apiKey, activeSession, setActiveSession }) => {
   const { exercises, updateExercise, addExercise } = useExercises();
   const { history, saveSession } = useHistory();
@@ -37,6 +45,7 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showFinishModal, setShowFinishModal] = useState(false);
   const [isBenchmarkMode, setIsBenchmarkMode] = useState(false);
+  const [benchmarkLocation, setBenchmarkLocation] = useState('gym'); // 'gym' or 'home'
   const [lastActionTime, setLastActionTime] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const userSex = localStorage.getItem('strive_sex') || 'male';
@@ -99,7 +108,7 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
           const isHighRepGoal = trainingGoal === 'build_muscle' || trainingGoal === 'maintain';
 
           if (isLowRepSet && isHighRepGoal) {
-            const e1RM = estimate1RM(parseFloat(lastHistorySet.weight), parseInt(lastHistorySet.reps), parseInt(lastHistorySet.rir || 0), userSex);
+            const e1RM = estimate1RM(parseFloat(lastHistorySet.weight), parseInt(lastHistorySet.reps), parseInt(lastHistorySet.rir || 0), userSex, currentExerciseId);
             const target = calculateTargetLoadFrom1RM(e1RM, trainingGoal, userSex, userBirthDate);
 
             if (target.weight > 0) {
@@ -133,12 +142,14 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
     }
   }, [currentExerciseId, currentExercise, isBenchmarkMode, trainingGoal, userSex, history]);
 
-  const startBenchmark = () => {
+  const startBenchmark = (location = 'gym') => {
     setIsBenchmarkMode(true);
+    setBenchmarkLocation(location);
     setTrainingGoal('build_strength');
     setActiveSession(true);
 
-    const firstEx = BENCHMARK_EXERCISES[0];
+    const exerciseList = location === 'home' ? HOME_BENCHMARK_EXERCISES : BENCHMARK_EXERCISES;
+    const firstEx = exerciseList[0];
     const exercise = exercises.find(e => e.id === firstEx.id);
 
     setCurrentExerciseId(firstEx.id);
@@ -146,7 +157,10 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
     const userHeight = localStorage.getItem('strive_height');
     const userBodyFat = localStorage.getItem('strive_body_fat');
 
-    if (exercise?.template) {
+    if (location === 'home') {
+      setWeight('0'); // Bodyweight
+      setReps('10');
+    } else if (exercise?.template) {
       setWeight((Math.floor(exercise.template.weight * 0.5 / 2.5) * 2.5).toString());
       setReps('10');
     } else {
@@ -168,14 +182,19 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
   const nextBenchmarkStep = (rir, setNumber) => {
     if (rir === 0) {
       // Limit found! Move to next muscle group
-      const currentIndex = BENCHMARK_EXERCISES.findIndex(ex => ex.id === currentExerciseId);
-      if (currentIndex < BENCHMARK_EXERCISES.length - 1) {
-        const nextExData = BENCHMARK_EXERCISES[currentIndex + 1];
+      const exerciseList = benchmarkLocation === 'home' ? HOME_BENCHMARK_EXERCISES : BENCHMARK_EXERCISES;
+      const currentIndex = exerciseList.findIndex(ex => ex.id === currentExerciseId);
+      
+      if (currentIndex < exerciseList.length - 1) {
+        const nextExData = exerciseList[currentIndex + 1];
         const nextEx = exercises.find(e => e.id === nextExData.id);
 
         setCurrentExerciseId(nextExData.id);
 
-        if (nextEx?.template) {
+        if (benchmarkLocation === 'home') {
+          setWeight('0');
+          setReps('10');
+        } else if (nextEx?.template) {
           setWeight((Math.floor(nextEx.template.weight * 0.5 / 2.5) * 2.5).toString());
           setReps('10');
         } else {
@@ -335,7 +354,7 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
     const newSet = {
       exerciseId: currentExerciseId,
       exerciseName: currentExercise?.name,
-      weight: parseFloat(weight),
+      weight: weight === 'BW' ? 0 : parseFloat(weight),
       reps: parseInt(reps),
       rir,
       form: selectedForm,
@@ -378,12 +397,17 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
             <div style={{ marginBottom: '20px' }}>
               <h2 className="premium-gradient-text" style={{ fontSize: '20px', marginBottom: '10px' }}>Strength Test</h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                Challenge your limits. Loads evolve based on your current power level.
+                Challenge your limits. Choose your environment.
               </p>
             </div>
-            <button className="btn-primary" onClick={startBenchmark} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-              <Zap size={18} /> Test My Strength
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button className="btn-primary" onClick={() => startBenchmark('gym')} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                <Zap size={18} /> Gym Strength Test
+              </button>
+              <button className="btn-secondary" onClick={() => startBenchmark('home')} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                <Play size={18} /> Home Strength Test
+              </button>
+            </div>
           </div>
 
           <div className="glass" style={{ padding: '25px', textAlign: 'center' }}>
@@ -663,15 +687,19 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
           <div className="responsive-grid" style={{ marginBottom: '20px' }}>
             <div className="input-group">
               <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                {currentExercise?.type === 'bodyweight_plus_weight' || currentExercise?.type === 'bodyweight_only'
-                  ? 'Added Weight (+kg)'
-                  : 'Weight (kg)'}
+                {benchmarkLocation === 'home' 
+                  ? 'Weight' 
+                  : (currentExercise?.type === 'bodyweight_plus_weight' || currentExercise?.type === 'bodyweight_only'
+                    ? 'Added Weight (+kg)'
+                    : 'Weight (kg)')}
               </label>
               <input
-                type="number"
+                type={benchmarkLocation === 'home' ? "text" : "number"}
                 placeholder="0"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
+                value={benchmarkLocation === 'home' ? "Bodyweight" : weight}
+                onChange={(e) => benchmarkLocation !== 'home' && setWeight(e.target.value)}
+                disabled={benchmarkLocation === 'home'}
+                style={{ opacity: benchmarkLocation === 'home' ? 0.6 : 1 }}
               />
             </div>
             <div className="input-group">
