@@ -1,0 +1,86 @@
+[
+  {
+    "id": "weighted_dips",
+    "name": "Weighted Dips",
+    "type": "bodyweight_plus_weight",
+    "muscles": [
+      { "name": "Chest", "engagement": 70 },
+      { "name": "Triceps", "engagement": 30 }
+    ],
+    "forms": ["Strict", "Cheat", "Paused"]
+  },
+  {
+    "id": "pull_ups",
+    "name": "Pull-ups",
+    "type": "bodyweight_plus_weight",
+    "muscles": [
+      { "name": "Back", "engagement": 65 },
+      { "name": "Biceps", "engagement": 35 }
+    ],
+    "forms": ["Strict", "Explosive", "Slow Eccentric"]
+  },
+  {
+    "id": "bench_press",
+    "name": "Bench Press",
+    "type": "weight_only",
+    "muscles": [
+      { "name": "Chest", "engagement": 60 },
+      { "name": "Front Delts", "engagement": 20 },
+      { "name": "Triceps", "engagement": 20 }
+    ],
+    "forms": ["Competition", "Touch & Go", "Paused"]
+  },
+  {
+    "id": "squats",
+    "name": "Barbell Squats",
+    "type": "weight_only",
+    "muscles": [
+      { "name": "Quads", "engagement": 60 },
+      { "name": "Glutes", "engagement": 25 },
+      { "name": "Adductors", "engagement": 15 }
+    ],
+    "forms": ["High Bar", "Low Bar", "Paused"]
+  },
+  {
+    "id": "overhead_press",
+    "name": "Overhead Press",
+    "type": "weight_only",
+    "muscles": [
+      { "name": "Shoulders", "engagement": 70 },
+      { "name": "Triceps", "engagement": 20 },
+      { "name": "Upper Chest", "engagement": 10 }
+    ],
+    "forms": ["Strict", "Push Press", "Paused"]
+  },
+  {
+    "id": "deadlift",
+    "name": "Deadlift",
+    "type": "weight_only",
+    "muscles": [
+      { "name": "Hamstrings", "engagement": 40 },
+      { "name": "Glutes", "engagement": 30 },
+      { "name": "Lower Back", "engagement": 30 }
+    ],
+    "forms": ["Conventional", "Sumo", "Deficit"]
+  },
+  {
+    "id": "bulgarian_split_squat",
+    "name": "Bulgarian Split Squats",
+    "type": "weight_only",
+    "muscles": [
+      { "name": "Quads", "engagement": 50 },
+      { "name": "Glutes", "engagement": 40 },
+      { "name": "Adductors", "engagement": 10 }
+    ],
+    "forms": ["Strict", "Deficit", "Explosive"]
+  },
+  {
+    "id": "bicep_curls",
+    "name": "Dumbbell Curls",
+    "type": "weight_only",
+    "muscles": [
+      { "name": "Biceps", "engagement": 100 }
+    ],
+    "forms": ["Strict", "Hammer", "Incline"]
+  }
+]
