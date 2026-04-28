@@ -42,18 +42,23 @@ export const calculateStartingLoad = (startRatio, weight, height, bodyFat, sex =
 export const getBodyweightLoadFactor = (exerciseId) => {
   const factors = {
     'pushups': 0.65,
+    'knee_pushups': 0.45,
+    'diamond_pushups': 0.70,
     'pike_pushups': 0.50,
+    'pike_pushups_elevated': 0.75,
     'pullups': 1.0,
     'dips': 0.90,
     'inverted_row': 0.50,
-    'bw_squat': 0.0, // Hard to estimate 1RM from BW Squats alone
+    'bw_squat': 0.0, 
+    'pistol_squat': 1.0,
     'lunges': 0.40,
-    'glute_bridge': 0.30
+    'glute_bridge': 0.30,
+    'single_leg_glute_bridge': 0.50
   };
   return factors[exerciseId] || 0;
 };
 
-export const estimate1RM = (weight, reps, rir = 0, sex = 'male', exerciseId = null) => {
+export const estimate1RM = (weight, reps, rir = 0, sex = 'male', exerciseId = null, userWeightOverride = null) => {
   const actualReps = reps + rir;
   if (actualReps === 0) return 0;
 
@@ -61,12 +66,14 @@ export const estimate1RM = (weight, reps, rir = 0, sex = 'male', exerciseId = nu
   
   // If weight is 0 or explicitly bodyweight-based, calculate based on BW
   if (exerciseId && (weight === 0 || weight === 'BW')) {
-    const userWeight = parseFloat(localStorage.getItem('strive_weight') || '75');
+    const userWeight = userWeightOverride || parseFloat(localStorage.getItem('strive_weight') || '75');
     const factor = getBodyweightLoadFactor(exerciseId);
     effectiveWeight = userWeight * factor;
   }
 
-  return effectiveWeight / (1.0278 - (0.0278 * actualReps));
+  // Use Epley formula for better stability at high rep ranges
+  // 1RM = Weight * (1 + (Reps / 30))
+  return effectiveWeight * (1 + (actualReps / 30));
 };
 
 export const suggestNextWeight = (lastSet, goal = 'build_muscle', sex = 'male', birthDate = null) => {

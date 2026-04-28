@@ -21,12 +21,48 @@ const BENCHMARK_EXERCISES = [
   { id: 'barbell_row', name: 'Barbell Row', type: 'back', startRatio: 0.4 }
 ];
 
-const HOME_BENCHMARK_EXERCISES = [
-  { id: 'bw_squat', name: 'Bodyweight Squat', type: 'legs', isBodyweight: true },
-  { id: 'pushups', name: 'Pushups', type: 'chest', isBodyweight: true },
-  { id: 'glute_bridge', name: 'Glute Bridge', type: 'hips', isBodyweight: true },
-  { id: 'pike_pushups', name: 'Pike Pushups', type: 'shoulders', isBodyweight: true },
-  { id: 'doorway_row', name: 'Doorway Row', type: 'back', isBodyweight: true }
+const HOME_BENCHMARK_CATEGORIES = [
+  { 
+    id: 'legs', 
+    label: 'Legs', 
+    options: [
+      { id: 'bw_squat', name: 'Bodyweight Squat', difficulty: 'Standard', desc: 'A fundamental movement for leg power.' },
+      { id: 'pistol_squat', name: 'Pistol Squat', difficulty: 'Advanced', desc: 'Single-leg strength test for high-level stability.' }
+    ]
+  },
+  { 
+    id: 'chest', 
+    label: 'Chest', 
+    options: [
+      { id: 'knee_pushups', name: 'Knee Pushups', difficulty: 'Beginner', desc: 'A great starting point for chest strength.' },
+      { id: 'pushups', name: 'Pushups', difficulty: 'Standard', desc: 'The classic upper body power test.' },
+      { id: 'diamond_pushups', name: 'Diamond Pushups', difficulty: 'Advanced', desc: 'Higher tricep and chest focus.' }
+    ]
+  },
+  { 
+    id: 'shoulders', 
+    label: 'Shoulders', 
+    options: [
+      { id: 'pike_pushups', name: 'Pike Pushups', difficulty: 'Standard', desc: 'Building vertical pressing power.' },
+      { id: 'pike_pushups_elevated', name: 'Elevated Pike Pushups', difficulty: 'Advanced', desc: 'Maximum overhead challenge.' }
+    ]
+  },
+  { 
+    id: 'back', 
+    label: 'Back', 
+    options: [
+      { id: 'doorway_row', name: 'Doorway Row', difficulty: 'Beginner', desc: 'Scalable horizontal pull for home.' },
+      { id: 'inverted_row', name: 'Inverted Row', difficulty: 'Standard', desc: 'Effective test for pulling strength.' }
+    ]
+  },
+  { 
+    id: 'hips', 
+    label: 'Hips & Posterior', 
+    options: [
+      { id: 'glute_bridge', name: 'Glute Bridge', difficulty: 'Standard', desc: 'Posterior chain stability test.' },
+      { id: 'single_leg_glute_bridge', name: 'Single-Leg Glute Bridge', difficulty: 'Advanced', desc: 'Isolating glute power.' }
+    ]
+  }
 ];
 
 const Training = ({ apiKey, activeSession, setActiveSession }) => {
@@ -46,6 +82,8 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
   const [showFinishModal, setShowFinishModal] = useState(false);
   const [isBenchmarkMode, setIsBenchmarkMode] = useState(false);
   const [benchmarkLocation, setBenchmarkLocation] = useState('gym'); // 'gym' or 'home'
+  const [showBenchmarkSelector, setShowBenchmarkSelector] = useState(false);
+  const [benchmarkCategoryIndex, setBenchmarkCategoryIndex] = useState(0);
   const [lastActionTime, setLastActionTime] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const userSex = localStorage.getItem('strive_sex') || 'male';
@@ -145,31 +183,40 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
   const startBenchmark = (location = 'gym') => {
     setIsBenchmarkMode(true);
     setBenchmarkLocation(location);
+    setBenchmarkCategoryIndex(0);
     setTrainingGoal('build_strength');
     setActiveSession(true);
 
-    const exerciseList = location === 'home' ? HOME_BENCHMARK_EXERCISES : BENCHMARK_EXERCISES;
-    const firstEx = exerciseList[0];
-    const exercise = exercises.find(e => e.id === firstEx.id);
-
-    setCurrentExerciseId(firstEx.id);
-    const userWeight = localStorage.getItem('strive_weight') || '75';
-    const userHeight = localStorage.getItem('strive_height');
-    const userBodyFat = localStorage.getItem('strive_body_fat');
-
     if (location === 'home') {
-      setWeight('0'); // Bodyweight
-      setReps('10');
-    } else if (exercise?.template) {
-      setWeight((Math.floor(exercise.template.weight * 0.5 / 2.5) * 2.5).toString());
-      setReps('10');
+      setShowBenchmarkSelector(true);
     } else {
-      // Guess based on lean body mass for a safe first-ever start
-      const guessedWeight = calculateStartingLoad(firstEx.startRatio, userWeight, userHeight, userBodyFat, userSex);
-      setWeight(guessedWeight.toString());
-      setReps('10');
+      const firstEx = BENCHMARK_EXERCISES[0];
+      const exercise = exercises.find(e => e.id === firstEx.id);
+
+      setCurrentExerciseId(firstEx.id);
+      const userWeight = localStorage.getItem('strive_weight') || '75';
+      const userHeight = localStorage.getItem('strive_height');
+      const userBodyFat = localStorage.getItem('strive_body_fat');
+
+      if (exercise?.template) {
+        setWeight((Math.floor(exercise.template.weight * 0.5 / 2.5) * 2.5).toString());
+        setReps('10');
+      } else {
+        const guessedWeight = calculateStartingLoad(firstEx.startRatio, userWeight, userHeight, userBodyFat, userSex);
+        setWeight(guessedWeight.toString());
+        setReps('10');
+      }
+      setSelectedForm('Strict');
     }
+  };
+
+  const selectHomeExercise = (exerciseId) => {
+    setCurrentExerciseId(exerciseId);
+    setWeight('0');
+    setReps('10');
     setSelectedForm('Strict');
+    setShowBenchmarkSelector(false);
+    notify(`AMRAP: Do as many reps as possible until failure.`, 'info');
   };
 
   const [notification, setNotification] = useState(null);
@@ -180,37 +227,45 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
   };
 
   const nextBenchmarkStep = (rir, setNumber) => {
-    if (rir === 0) {
-      // Limit found! Move to next muscle group
-      const exerciseList = benchmarkLocation === 'home' ? HOME_BENCHMARK_EXERCISES : BENCHMARK_EXERCISES;
-      const currentIndex = exerciseList.findIndex(ex => ex.id === currentExerciseId);
-      
-      if (currentIndex < exerciseList.length - 1) {
-        const nextExData = exerciseList[currentIndex + 1];
-        const nextEx = exercises.find(e => e.id === nextExData.id);
-
-        setCurrentExerciseId(nextExData.id);
-
-        if (benchmarkLocation === 'home') {
-          setWeight('0');
-          setReps('10');
-        } else if (nextEx?.template) {
-          setWeight((Math.floor(nextEx.template.weight * 0.5 / 2.5) * 2.5).toString());
-          setReps('10');
+    const isHomeDone = benchmarkLocation === 'home';
+    
+    if (rir === 0 || isHomeDone) {
+      if (benchmarkLocation === 'home') {
+        if (benchmarkCategoryIndex < HOME_BENCHMARK_CATEGORIES.length - 1) {
+          const nextIdx = benchmarkCategoryIndex + 1;
+          setBenchmarkCategoryIndex(nextIdx);
+          setShowBenchmarkSelector(true);
+          notify(`Power limit reached! Calibrating ${HOME_BENCHMARK_CATEGORIES[nextIdx].label}...`, 'success');
         } else {
-          const userWeight = localStorage.getItem('strive_weight') || '75';
-          const userHeight = localStorage.getItem('strive_height');
-          const userBodyFat = localStorage.getItem('strive_body_fat');
-          const guessedWeight = calculateStartingLoad(nextExData.startRatio, userWeight, userHeight, userBodyFat, userSex);
-          setWeight(guessedWeight.toString());
-          setReps('10');
+          notify("Strength Test complete! Your profile is now fully calibrated.", 'success');
+          setTimeout(() => endTraining(), 2000);
         }
-
-        setSelectedForm('Strict');
-        notify(`Power limit reached! Calibrating ${nextExData.type}...`, 'success');
       } else {
-        notify("Strength Test complete! Your profile is now fully calibrated.", 'success');
-        setTimeout(() => endTraining(), 2000);
+        const currentIndex = BENCHMARK_EXERCISES.findIndex(ex => ex.id === currentExerciseId);
+        if (currentIndex < BENCHMARK_EXERCISES.length - 1) {
+          const nextExData = BENCHMARK_EXERCISES[currentIndex + 1];
+          const nextEx = exercises.find(e => e.id === nextExData.id);
+
+          setCurrentExerciseId(nextExData.id);
+
+          if (nextEx?.template) {
+            setWeight((Math.floor(nextEx.template.weight * 0.5 / 2.5) * 2.5).toString());
+            setReps('10');
+          } else {
+            const userWeight = localStorage.getItem('strive_weight') || '75';
+            const userHeight = localStorage.getItem('strive_height');
+            const userBodyFat = localStorage.getItem('strive_body_fat');
+            const guessedWeight = calculateStartingLoad(nextExData.startRatio, userWeight, userHeight, userBodyFat, userSex);
+            setWeight(guessedWeight.toString());
+            setReps('10');
+          }
+
+          setSelectedForm('Strict');
+          notify(`Power limit reached! Calibrating ${nextExData.type}...`, 'success');
+        } else {
+          notify("Strength Test complete! Your profile is now fully calibrated.", 'success');
+          setTimeout(() => endTraining(), 2000);
+        }
       }
     } else {
       // Keep pushing - Dynamic 1RM Protocol
@@ -584,6 +639,58 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
             onCancel={() => setShowFinishModal(false)}
           />
         )}
+      </div>
+    );
+  }
+
+  // Phase: Benchmark Exercise Selector (Home Mode)
+  if (showBenchmarkSelector) {
+    const currentCategory = HOME_BENCHMARK_CATEGORIES[benchmarkCategoryIndex];
+    return (
+      <div className="page-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: '0' }}>
+        <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '40px' }}>
+          <header className="sticky-header">
+            <h1 className="premium-gradient-text" style={{ fontSize: '32px' }}>{currentCategory.label} Test</h1>
+            <p style={{ color: 'var(--text-secondary)' }}>Select your challenge level.</p>
+          </header>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', padding: '10px' }}>
+            {currentCategory.options.map(option => (
+              <div 
+                key={option.id}
+                className="glass clickable-card"
+                style={{ padding: '25px', textAlign: 'left', border: '1px solid rgba(255,255,255,0.1)' }}
+                onClick={() => selectHomeExercise(option.id)}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <h3 style={{ fontSize: '20px' }}>{option.name}</h3>
+                  <span style={{ 
+                    fontSize: '12px', 
+                    padding: '4px 10px', 
+                    borderRadius: '20px', 
+                    background: option.difficulty === 'Advanced' ? 'rgba(239, 68, 68, 0.2)' : 
+                               option.difficulty === 'Standard' ? 'rgba(59, 130, 246, 0.2)' : 
+                               'rgba(16, 185, 129, 0.2)',
+                    color: option.difficulty === 'Advanced' ? '#ef4444' : 
+                           option.difficulty === 'Standard' ? '#3b82f6' : 
+                           '#10b981',
+                    fontWeight: '700'
+                  }}>
+                    {option.difficulty}
+                  </span>
+                </div>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.5' }}>
+                  {option.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ padding: '20px' }}>
+           <button className="btn-secondary" style={{ width: '100%' }} onClick={() => { setShowBenchmarkSelector(false); setActiveSession(false); }}>
+              Abort Test
+            </button>
+        </div>
       </div>
     );
   }

@@ -14,12 +14,14 @@ export const useHistory = () => {
     const currentHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     const newSession = {
       id: Date.now().toString(),
-      name: metadata.name || 'Workout', // Support descriptive names
+      name: metadata.name || 'Workout',
       timestamp: new Date().toISOString(),
       sets,
       goal: metadata.goal || 'build_muscle',
       duration: metadata.duration || 0,
-      version: '1.0' // Storage versioning
+      userWeight: parseFloat(localStorage.getItem('strive_weight') || '0'),
+      userSex: localStorage.getItem('strive_sex') || 'male',
+      version: '1.1'
     };
     const updatedHistory = [newSession, ...currentHistory];
     localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));

@@ -28,15 +28,48 @@ const LEVEL_COLORS = {
   'Unranked': '#4b5563' // Dark Gray
 };
 
-export const calculateMaxE1RM = (history, exerciseId, sex = 'male') => {
+const BENCHMARK_EQUIVALENTS = {
+  'bench_press': ['bench_press', 'pushups', 'knee_pushups', 'diamond_pushups'],
+  'squat': ['squat', 'bw_squat', 'pistol_squat'],
+  'deadlift': ['deadlift', 'glute_bridge', 'single_leg_glute_bridge'],
+  'overhead_press': ['overhead_press', 'pike_pushups', 'pike_pushups_elevated'],
+  'barbell_row': ['barbell_row', 'inverted_row', 'doorway_row']
+};
+
+const getWeightForDate = (dateString) => {
+  try {
+    const logs = JSON.parse(localStorage.getItem('strive_biometric_log') || '[]');
+    if (logs.length === 0) return null;
+    
+    const targetDate = new Date(dateString);
+    targetDate.setHours(23, 59, 59, 999); // End of day for comparison
+    
+    // Logs are already sorted newest first
+    const entry = logs.find(log => new Date(log.date) <= targetDate);
+    return entry ? parseFloat(entry.weight) : null;
+  } catch (e) {
+    return null;
+  }
+};
+
+export const calculateMaxE1RM = (history, benchmarkId, sex = 'male') => {
   if (!history || history.length === 0) return 0;
   
+  const equivalents = BENCHMARK_EQUIVALENTS[benchmarkId] || [benchmarkId];
   let maxE1RM = 0;
+  
   history.forEach(session => {
     if (session.sets) {
       session.sets.forEach(set => {
-        if (set.exerciseId === exerciseId) {
-          const e1rm = estimate1RM(parseFloat(set.weight), parseInt(set.reps), parseInt(set.rir || 0), sex);
+        if (equivalents.includes(set.exerciseId)) {
+          // 1. Check for session snapshot (New sessions)
+          // 2. Check for biometric log entry for that date (Old sessions)
+          // 3. Fallback to current weight
+          const sessionWeight = session.userWeight || 
+                               getWeightForDate(session.timestamp) || 
+                               parseFloat(localStorage.getItem('strive_weight') || '75');
+                               
+          const e1rm = estimate1RM(parseFloat(set.weight || 0), parseInt(set.reps), parseInt(set.rir || 0), sex, set.exerciseId, sessionWeight);
           if (e1rm > maxE1RM) {
             maxE1RM = e1rm;
           }

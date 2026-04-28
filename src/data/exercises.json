@@ -1254,5 +1254,148 @@
         "hasVisualization": false
       }
     ]
+  },
+  {
+    "id": "pistol_squat",
+    "name": "Pistol Squat",
+    "type": "bodyweight_only",
+    "muscles": [
+      {
+        "name": "Quads",
+        "engagement": 60
+      },
+      {
+        "name": "Glutes",
+        "engagement": 30
+      },
+      {
+        "name": "Adductors",
+        "engagement": 10
+      }
+    ],
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "One leg extended",
+          "Deep squat on standing leg",
+          "Maintain balance",
+          "Chest up"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "knee_pushups",
+    "name": "Knee Pushups",
+    "type": "bodyweight_only",
+    "muscles": [
+      {
+        "name": "Chest",
+        "engagement": 60
+      },
+      {
+        "name": "Triceps",
+        "engagement": 20
+      },
+      {
+        "name": "Front Delts",
+        "engagement": 20
+      }
+    ],
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "Knees on floor",
+          "Straight line from head to knees",
+          "Chest to floor"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "diamond_pushups",
+    "name": "Diamond Pushups",
+    "type": "bodyweight_only",
+    "muscles": [
+      {
+        "name": "Triceps",
+        "engagement": 50
+      },
+      {
+        "name": "Chest",
+        "engagement": 40
+      },
+      {
+        "name": "Front Delts",
+        "engagement": 10
+      }
+    ],
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "Hands forming a diamond",
+          "Elbows tucked",
+          "Chest touches hands"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "pike_pushups_elevated",
+    "name": "Elevated Pike Pushups",
+    "type": "bodyweight_only",
+    "muscles": [
+      {
+        "name": "Front Delts",
+        "engagement": 70
+      },
+      {
+        "name": "Triceps",
+        "engagement": 30
+      }
+    ],
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "Feet on a bench/chair",
+          "Hips high",
+          "Press vertically"
+        ],
+        "hasVisualization": false
+      }
+    ]
+  },
+  {
+    "id": "single_leg_glute_bridge",
+    "name": "Single-Leg Glute Bridge",
+    "type": "bodyweight_only",
+    "muscles": [
+      {
+        "name": "Glutes",
+        "engagement": 80
+      },
+      {
+        "name": "Hamstrings",
+        "engagement": 20
+      }
+    ],
+    "forms": [
+      {
+        "name": "Strict",
+        "cues": [
+          "One leg extended",
+          "Drive through the floor foot",
+          "Squeeze glute at top"
+        ],
+        "hasVisualization": false
+      }
+    ]
   }
 ]
