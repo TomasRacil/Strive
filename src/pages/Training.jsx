@@ -106,79 +106,131 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
 
   useEffect(() => {
     if (currentExercise) {
-      if (currentExercise.forms && currentExercise.forms.length > 0) {
+      if (currentExercise.forms && currentExercise.forms.length > 0 && !selectedForm) {
         setSelectedForm(currentExercise.forms[0].name || currentExercise.forms[0]);
       }
 
-      // Load template OR suggest based on engine
-      if (currentExercise.template) {
-        const lastSet = {
+      let lastSet = null;
+      
+      // 1. Check current session sets first (Dynamic Intra-session adaptation)
+      if (currentExerciseSets.length > 0) {
+        lastSet = currentExerciseSets[currentExerciseSets.length - 1];
+      } 
+      // 2. Check exercise template
+      else if (currentExercise.template) {
+        lastSet = {
           weight: currentExercise.template.weight,
           reps: currentExercise.template.reps,
           rir: currentExercise.template.rir || 0
         };
-        setWeight(suggestNextWeight(lastSet, trainingGoal, userSex, userBirthDate)?.toString() || '');
-        setReps(suggestNextReps(lastSet, trainingGoal, userSex, userBirthDate)?.toString() || '');
-      } else if (!isBenchmarkMode) {
-        let lastHistorySet = null;
+      } 
+      // 3. Check history (Past sessions)
+      else {
         if (Array.isArray(history)) {
           for (let i = 0; i < history.length; i++) {
             const session = history[i];
             if (session.sets && Array.isArray(session.sets)) {
-              // Resilient search: check both ID and Name to handle potential data mismatches
               const exerciseSets = session.sets.filter(s =>
                 s.exerciseId === currentExerciseId ||
                 (s.exerciseName && currentExercise && s.exerciseName === currentExercise.name)
               );
               if (exerciseSets.length > 0) {
-                lastHistorySet = exerciseSets[exerciseSets.length - 1];
+                // Find Best Set from this session (highest 1RM equivalent)
+                // This ensures we start the next session based on peak performance, not fatigue.
+                lastSet = exerciseSets.reduce((best, curr) => {
+                  const weightB = parseFloat(best.weight || 0);
+                  const repsB = parseInt(best.reps || 0);
+                  const rirB = parseInt(best.rir || 0);
+                  const e1rmB = weightB * (1 + (repsB + rirB) / 30);
+                  
+                  const weightC = parseFloat(curr.weight || 0);
+                  const repsC = parseInt(curr.reps || 0);
+                  const rirC = parseInt(curr.rir || 0);
+                  const e1rmC = weightC * (1 + (repsC + rirC) / 30);
+                  
+                  return e1rmC > e1rmB ? curr : best;
+                }, exerciseSets[0]);
                 break;
               }
             }
           }
         }
 
-        if (lastHistorySet) {
-          // Phase Shift Intelligence: 
-          // If we are moving from a very low-rep set (like a Benchmark) to a higher-rep goal,
-          // calculate the target based on 1RM rather than simple linear progression.
-          const isLowRepSet = lastHistorySet.reps <= 3;
-          const isHighRepGoal = trainingGoal === 'build_muscle' || trainingGoal === 'maintain';
-
-          if (isLowRepSet && isHighRepGoal) {
-            const e1RM = estimate1RM(parseFloat(lastHistorySet.weight), parseInt(lastHistorySet.reps), parseInt(lastHistorySet.rir || 0), userSex, currentExerciseId);
-            const target = calculateTargetLoadFrom1RM(e1RM, trainingGoal, userSex, userBirthDate);
-
-            if (target.weight > 0) {
-              setWeight(target.weight.toString());
-              setReps(target.reps.toString());
-              return; // Exit early if we found a valid recommendation
-            }
-          } else {
-            setWeight(suggestNextWeight(lastHistorySet, trainingGoal, userSex, userBirthDate)?.toString() || '');
-            setReps(suggestNextReps(lastHistorySet, trainingGoal, userSex, userBirthDate)?.toString() || '');
-            return; // Exit early
+        // 4. Warmup Set logic
+        if (!lastSet && currentExercise.requiresWarmup && !isBenchmarkMode && currentExerciseSets.length === 0) {
+          const calibrated = getCalibratedLoad(currentExercise, history, trainingGoal, userSex, userBirthDate);
+          if (calibrated) {
+            setWeight((Math.round((calibrated.weight * 0.6) / 2.5) * 2.5).toString());
+            setReps("5");
+            showAlert("Warmup Recommended", `This is a heavy compound exercise. Let's start with a warmup set at 60% load.`, "info");
+            return;
           }
         }
+      }
 
-        // Final Fallback: Calibration via Benchmarks
+      let finalWeight = '';
+      let finalReps = '';
+
+      if (lastSet) {
+        const isLowRepSet = lastSet.reps <= 3;
+        const isHighRepGoal = trainingGoal === 'build_muscle' || trainingGoal === 'maintain';
+
+        if (isLowRepSet && isHighRepGoal) {
+          const e1RM = estimate1RM(parseFloat(lastSet.weight), parseInt(lastSet.reps), parseInt(lastSet.rir || 0), userSex, currentExerciseId);
+          const target = calculateTargetLoadFrom1RM(e1RM, trainingGoal, userSex, userBirthDate);
+          finalWeight = target.weight.toString();
+          finalReps = target.reps.toString();
+        } else {
+          let suggestedWeight = suggestNextWeight(lastSet, trainingGoal, userSex, userBirthDate);
+          let suggestedReps = suggestNextReps(lastSet, trainingGoal, userSex, userBirthDate);
+
+          if (lastSet.rir >= 3) {
+            const calibrated = getCalibratedLoad(currentExercise, history, trainingGoal, userSex, userBirthDate);
+            if (calibrated && calibrated.weight > (suggestedWeight || 0)) {
+              // Warmup Transition: If jumping from a warmup-level weight to a working potential,
+              // be much more aggressive or jump straight to the target.
+              if (currentExercise.requiresWarmup && currentExerciseSets.length === 1) {
+                suggestedWeight = calibrated.weight;
+                suggestedReps = calibrated.reps;
+              } else {
+                const diff = calibrated.weight - parseFloat(lastSet.weight);
+                const jump = Math.max(5, Math.round((diff * 0.4) / 2.5) * 2.5); 
+                suggestedWeight = parseFloat(lastSet.weight) + jump;
+                suggestedReps = calibrated.reps;
+              }
+            }
+          }
+          finalWeight = suggestedWeight?.toString() || '';
+          finalReps = suggestedReps?.toString() || '';
+        }
+      } else {
         const calibrated = getCalibratedLoad(currentExercise, history, trainingGoal, userSex, userBirthDate);
         if (calibrated) {
-          setWeight(calibrated.weight.toString());
-          setReps(calibrated.reps.toString());
+          finalWeight = calibrated.weight.toString();
+          finalReps = calibrated.reps.toString();
         } else {
-          // Absolute fallback: Biometric Guess
           const userWeight = localStorage.getItem('strive_weight') || '75';
           const userHeight = localStorage.getItem('strive_height');
           const userBodyFat = localStorage.getItem('strive_body_fat');
           const startRatio = currentExercise?.startRatio || 0.4;
           const guessedWeight = calculateStartingLoad(startRatio, userWeight, userHeight, userBodyFat, userSex);
-          setWeight(guessedWeight.toString());
-          setReps(suggestNextReps(null, trainingGoal, userSex, userBirthDate).toString());
+          finalWeight = guessedWeight.toString();
+          finalReps = suggestNextReps(null, trainingGoal, userSex, userBirthDate).toString();
         }
       }
+
+      // Apply Warmup Logic: If first set of a heavy exercise, suggest 60% load
+      if (currentExerciseSets.length === 0 && currentExercise.requiresWarmup && !isBenchmarkMode) {
+        setWeight((Math.round((parseFloat(finalWeight) * 0.6) / 2.5) * 2.5).toString());
+        setReps("5");
+        showAlert("Warmup Recommended", `This is a heavy compound exercise. Let's start with a warmup set at 60% load.`, "info");
+      } else {
+        setWeight(finalWeight);
+        setReps(finalReps);
+      }
     }
-  }, [currentExerciseId, currentExercise, isBenchmarkMode, trainingGoal, userSex, history]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentExerciseId, trainingGoal, currentExerciseSets.length]);
 
   const startBenchmark = (location = 'gym') => {
     setIsBenchmarkMode(true);
@@ -312,6 +364,8 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
     setCurrentExerciseId(exerciseId);
     setActiveSession(true);
     setShowSelector(false);
+    setIsBenchmarkMode(false);
+    setBenchmarkLocation('gym');
   };
 
   const startRoutine = (routine) => {
@@ -390,6 +444,8 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
     setCurrentExerciseId(null);
     setActiveRoutine(null);
     setRoutineStep(0);
+    setIsBenchmarkMode(false);
+    setBenchmarkLocation('gym');
   };
 
   const endTraining = () => {
@@ -794,19 +850,19 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
           <div className="responsive-grid" style={{ marginBottom: '20px' }}>
             <div className="input-group">
               <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                {benchmarkLocation === 'home' 
+                {(isBenchmarkMode && benchmarkLocation === 'home')
                   ? 'Weight' 
                   : (currentExercise?.type === 'bodyweight_plus_weight' || currentExercise?.type === 'bodyweight_only'
                     ? 'Added Weight (+kg)'
                     : 'Weight (kg)')}
               </label>
               <input
-                type={benchmarkLocation === 'home' ? "text" : "number"}
+                type={(isBenchmarkMode && benchmarkLocation === 'home') ? "text" : "number"}
                 placeholder="0"
-                value={benchmarkLocation === 'home' ? "Bodyweight" : weight}
-                onChange={(e) => benchmarkLocation !== 'home' && setWeight(e.target.value)}
-                disabled={benchmarkLocation === 'home'}
-                style={{ opacity: benchmarkLocation === 'home' ? 0.6 : 1 }}
+                value={(isBenchmarkMode && benchmarkLocation === 'home') ? "Bodyweight" : weight}
+                onChange={(e) => !(isBenchmarkMode && benchmarkLocation === 'home') && setWeight(e.target.value)}
+                disabled={isBenchmarkMode && benchmarkLocation === 'home'}
+                style={{ opacity: (isBenchmarkMode && benchmarkLocation === 'home') ? 0.6 : 1 }}
               />
             </div>
             <div className="input-group">
@@ -839,7 +895,7 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  {val}
+                  {val === 3 ? '3+' : val}
                 </button>
               ))}
             </div>

@@ -92,16 +92,26 @@ export const suggestNextWeight = (lastSet, goal = 'build_muscle', sex = 'male', 
   }
   
   if (goal === 'build_muscle') {
+    const targetReps = (sex === 'female' || isMaster) ? 12 : 10;
+    
+    // Fatigue Management / Rep Range Correction:
+    if (reps < targetReps - 2 && rir <= 1) {
+      return Math.round((weight * 0.9) / 2.5) * 2.5;
+    }
+
+    // Progressive Overload (Step Loading):
+    // 1. If you exceeded target reps (e.g. 11-12) even with low RIR
+    // 2. If you hit your target reps (10) with at least 1 RIR to spare
+    if (reps >= targetReps + 1 || (reps >= targetReps && rir >= 1)) {
+      return weight + 2.5;
+    }
+
     if (sex === 'female' || isMaster) {
-      // Prioritize volume (reps) before weight for masters to protect joints
-      const targetReps = isMaster ? 12 : 15;
-      if (reps >= targetReps && rir >= 2) return weight + 2.5;
+      if (reps >= 12 && rir >= 2) return weight + 2.5;
       return weight;
     }
     
-    // Aggressive progression for juniors
     if (isJunior && rir >= 3) return weight + 5; 
-    
     if (rir >= 2) return weight + 2.5; 
     return weight;
   }
@@ -125,7 +135,19 @@ export const suggestNextReps = (lastSet, goal = 'build_muscle', sex = 'male', bi
   const isMaster = age > 45;
 
   if (goal === 'build_muscle') {
+    const targetReps = (sex === 'female' || isMaster) ? 12 : 10;
     const maxReps = (sex === 'female' || isMaster) ? 15 : 12;
+
+    // If we fell short and hit failure, and we expect a weight drop, reset to target reps
+    if (reps < targetReps - 2 && rir <= 1) return targetReps;
+    
+    // Progressive Overload Reset:
+    // If we hit/exceeded target reps and weight is likely increasing, reset reps back to target baseline
+    if (reps >= targetReps + 1 || (reps >= targetReps && rir >= 1)) return targetReps;
+
+    // Intra-session adaptation: If it was way too easy (RIR 3+), jump 2 reps
+    if (rir >= 3 && reps < maxReps - 1) return reps + 2;
+    
     if (rir >= 1 && reps < maxReps) return reps + 1;
     return reps;
   }
@@ -213,57 +235,73 @@ export const calculateTargetLoadFrom1RM = (e1RM, goal, sex = 'male', birthDate =
   return { weight, reps };
 };
 
-const MUSCLE_TO_BENCHMARK = {
-  'Chest': ['bench_press', 'pushups'],
-  'Triceps': ['bench_press', 'pushups'],
-  'Front Delts': ['bench_press', 'pushups', 'pike_pushups'],
-  'Quads': ['squat', 'bw_squat'],
-  'Glutes': ['squat', 'glute_bridge', 'bw_squat'],
-  'Hamstrings': ['deadlift', 'glute_bridge'],
-  'Lower Back': ['deadlift'],
-  'Upper Back': ['barbell_row', 'doorway_row', 'inverted_row'],
-  'Back': ['barbell_row', 'doorway_row', 'inverted_row', 'pullups'],
-  'Lats': ['barbell_row', 'pullups'],
-  'Shoulders': ['overhead_press', 'pike_pushups'],
-  'Biceps': ['barbell_row', 'inverted_row']
+const BENCHMARK_EQUIVALENTS = {
+  'bench_press': ['bench_press', 'pushups', 'knee_pushups', 'diamond_pushups'],
+  'squat': ['squat', 'bw_squat', 'pistol_squat'],
+  'deadlift': ['deadlift', 'glute_bridge', 'single_leg_glute_bridge'],
+  'overhead_press': ['overhead_press', 'pike_pushups', 'pike_pushups_elevated'],
+  'barbell_row': ['barbell_row', 'inverted_row', 'doorway_row']
 };
 
 export const getCalibratedLoad = (exercise, history, goal, sex, birthDate) => {
-  if (!exercise || !Array.isArray(history)) return null;
+  if (!exercise) return null;
   
+  // Find which benchmark matches this exercise's primary muscle
   const primaryMuscle = exercise.muscles?.[0]?.name;
-  const benchmarkIds = MUSCLE_TO_BENCHMARK[primaryMuscle];
-  if (!benchmarkIds) return null;
+  let benchmarkId = null;
+  
+  if (['Chest', 'Triceps'].includes(primaryMuscle)) benchmarkId = 'bench_press';
+  else if (['Quads', 'Glutes'].includes(primaryMuscle)) benchmarkId = 'squat';
+  else if (['Hamstrings', 'Lower Back'].includes(primaryMuscle)) benchmarkId = 'deadlift';
+  else if (['Upper Back', 'Back', 'Lats', 'Biceps'].includes(primaryMuscle)) benchmarkId = 'barbell_row';
+  else if (['Shoulders', 'Front Delts'].includes(primaryMuscle)) benchmarkId = 'overhead_press';
+
+  if (!benchmarkId) return null;
   
   let bestE1RM = 0;
-  
-  // Search history for the best 1RM of any relevant benchmark exercise
-  history.forEach(session => {
-    if (session.sets) {
-      session.sets.forEach(set => {
-        benchmarkIds.forEach(benchmarkId => {
-          const idMatch = set.exerciseId === benchmarkId;
-          const nameMatch = set.exerciseName && set.exerciseName.toLowerCase().includes(benchmarkId.replace('_', ' '));
-          
-          if (idMatch || nameMatch) {
-            const e1rm = estimate1RM(parseFloat(set.weight || 0), parseInt(set.reps), parseInt(set.rir || 0), sex, benchmarkId);
+
+  // 1. CHECK SPECIFIC HISTORY FIRST (Highest Precedence)
+  // If the user has actually done THIS exercise, their real performance is the most accurate calibration.
+  if (Array.isArray(history)) {
+    history.forEach(session => {
+      if (session.sets) {
+        session.sets.forEach(set => {
+          if (set.exerciseId === exercise.id || (set.exerciseName === exercise.name)) {
+            const sessionWeight = session.userWeight || parseFloat(localStorage.getItem('strive_weight') || '75');
+            const e1rm = estimate1RM(parseFloat(set.weight || 0), parseInt(set.reps), parseInt(set.rir || 0), sex, set.exerciseId, sessionWeight);
             if (!isNaN(e1rm) && e1rm > bestE1RM) bestE1RM = e1rm;
           }
         });
-      });
-    }
-  });
+      }
+    });
+  }
+
+  // 2. FALLBACK TO BENCHMARK VAULT (If no specific history found)
+  if (bestE1RM === 0) {
+    try {
+      const benchmarks = JSON.parse(localStorage.getItem('strive_benchmarks') || '{}');
+      if (benchmarks[benchmarkId]) {
+        bestE1RM = benchmarks[benchmarkId];
+      }
+    } catch (e) {}
+  }
+
+  // 3. FALLBACK TO BROAD HISTORY SCAN
+  if (bestE1RM === 0 && Array.isArray(history)) {
+    const equivalents = BENCHMARK_EQUIVALENTS[benchmarkId] || [benchmarkId];
+    history.forEach(session => {
+      if (session.sets) {
+        session.sets.forEach(set => {
+          if (equivalents.includes(set.exerciseId)) {
+            const sessionWeight = session.userWeight || parseFloat(localStorage.getItem('strive_weight') || '75');
+            const e1rm = estimate1RM(parseFloat(set.weight || 0), parseInt(set.reps), parseInt(set.rir || 0), sex, set.exerciseId, sessionWeight);
+            if (!isNaN(e1rm) && e1rm > bestE1RM) bestE1RM = e1rm;
+          }
+        });
+      }
+    });
+  }
   
-  if (bestE1RM <= 0) return null;
-  
-  const userWeight = parseFloat(localStorage.getItem('strive_weight') || '75');
-  // 0.4 is the average benchmark startRatio (Novice level)
-  // Clamp strength multiplier between 0.5 and 4.0 to avoid insane suggestions
-  let strengthMultiplier = bestE1RM / (userWeight * 0.4);
-  strengthMultiplier = Math.min(Math.max(strengthMultiplier, 0.5), 4.0);
-  
-  const exerciseRatio = exercise.startRatio || 0.2;
-  const calibrated1RM = userWeight * exerciseRatio * strengthMultiplier;
-  
-  return calculateTargetLoadFrom1RM(calibrated1RM, goal, sex, birthDate);
+  if (bestE1RM === 0) return null;
+  return calculateTargetLoadFrom1RM(bestE1RM, goal, sex, birthDate);
 };

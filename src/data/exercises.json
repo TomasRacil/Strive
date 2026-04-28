@@ -2,6 +2,7 @@
   {
     "id": "bench_press",
     "name": "Bench Press",
+    "requiresWarmup": true,
     "type": "weight_only",
     "muscles": [
       {
@@ -51,6 +52,7 @@
   {
     "id": "squat",
     "name": "Squat",
+    "requiresWarmup": true,
     "type": "weight_only",
     "muscles": [
       {
@@ -153,6 +155,7 @@
   {
     "id": "overhead_press",
     "name": "Overhead Press",
+    "requiresWarmup": true,
     "type": "weight_only",
     "muscles": [
       {
@@ -205,6 +208,7 @@
   {
     "id": "deadlift",
     "name": "Deadlift",
+    "requiresWarmup": true,
     "type": "weight_only",
     "muscles": [
       {
@@ -315,6 +319,7 @@
   {
     "id": "barbell_row",
     "name": "Barbell Row",
+    "requiresWarmup": true,
     "type": "weight_only",
     "muscles": [
       {
