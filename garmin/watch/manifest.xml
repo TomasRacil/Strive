@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<!--
+  Device list is deliberately short: monkeyc fails the build for a product id it
+  does not know, so add the exact model once the SDK is installed. Run monkeyc
+  with the "devices" flag to list valid ids, then add an iq:product entry below.
+-->
+<manifest xmlns="http://www.garmin.com/xml/connectiq">
+  <iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
+    <iq:application
+      id="c3d39c12c10dcb1ec9e4aeffabf5a0b5"
+      type="watch-app"
+      name="@Strings.AppName"
+      entry="StriveApp"
+      launcherIcon="@Drawables.LauncherIcon"
+      minApiLevel="3.1.0">
+
+      <iq:products>
+        <iq:product id="fenix7"/>
+        <iq:product id="fr965"/>
+        <iq:product id="venu3"/>
+        <iq:product id="epix2"/>
+      </iq:products>
+
+      <iq:permissions>
+        <iq:uses-permission id="Fit"/>
+      </iq:permissions>
+
+      <iq:languages>
+        <iq:language>eng</iq:language>
+      </iq:languages>
+    </iq:application>
+  </iq:manifest>
+</manifest>

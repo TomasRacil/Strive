@@ -1,0 +1,6 @@
+# Connect IQ developer key and build output.
+# Paths here are relative to garmin/watch/, not the repo root.
+keys/
+build/
+*.prg
+*.iq
