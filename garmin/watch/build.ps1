@@ -7,12 +7,24 @@
 # watch; the manifest must list the same id.
 
 param(
-    [string]$Device = "fenix7",
+    [string]$Device = "fenix8pro47mm",
     [string]$Deploy = "",
-    [string]$Sdk = "$env:APPDATA\Garmin\ConnectIQ\Sdks\connectiq-sdk-win-9.3.0"
+    [string]$Sdk = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+# The SDK directory name carries a version and date, so read the active SDK from
+# the manager's config instead of hardcoding a path that will go stale.
+if ($Sdk -eq "") {
+    $sdkConfig = Join-Path $env:APPDATA "Garmin\ConnectIQ\current-sdk.cfg"
+    if (Test-Path $sdkConfig) {
+        $Sdk = (Get-Content $sdkConfig -Raw).Trim()
+    } else {
+        Write-Host "No active SDK found. Run sdkmanager.exe and install a Connect IQ SDK." -ForegroundColor Red
+        exit 1
+    }
+}
 
 $monkeyc = Join-Path $Sdk "bin\monkeyc.bat"
 if (-not (Test-Path $monkeyc)) {

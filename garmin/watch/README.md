@@ -34,19 +34,30 @@ sets without a phone.
 
 ```powershell
 cd garmin\watch
-.\build.ps1 -Device fenix7
+.\build.ps1
 ```
 
+Defaults to `fenix8pro47mm` and reads the active SDK path from
+`%APPDATA%\Garmin\ConnectIQ\current-sdk.cfg`, so it keeps working after an SDK
+update. Output: `build\Strive-fenix8pro47mm.prg`.
+
 The device id must also be listed in `manifest.xml` under `<iq:products>`.
-`monkeyc --devices` prints the valid ids.
+Device ids live in `%APPDATA%\Garmin\ConnectIQ\Devices\` — the folder names are
+the ids.
+
+Verified building against Connect IQ 9.3.0 for `fenix8pro47mm`.
 
 ## Sideload
 
 1. Plug the watch in by USB. It mounts as a drive.
-2. Copy `build\Strive-<device>.prg` into `GARMIN\APPS` on that drive.
+2. Copy `build\Strive-fenix8pro47mm.prg` into `GARMIN\APPS` on that drive.
 3. Unplug. The app appears in the watch's app list.
 
-Or in one step: `.\build.ps1 -Device fenix7 -Deploy E:\`
+Or in one step, if the watch is mounted at `E:`:
+
+```powershell
+.\build.ps1 -Deploy E:\
+```
 
 ## Layout
 

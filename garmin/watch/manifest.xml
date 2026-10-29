@@ -4,30 +4,25 @@
   does not know, so add the exact model once the SDK is installed. Run monkeyc
   with the "devices" flag to list valid ids, then add an iq:product entry below.
 -->
-<manifest xmlns="http://www.garmin.com/xml/connectiq">
-  <iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
-    <iq:application
-      id="c3d39c12c10dcb1ec9e4aeffabf5a0b5"
-      type="watch-app"
-      name="@Strings.AppName"
-      entry="StriveApp"
-      launcherIcon="@Drawables.LauncherIcon"
-      minApiLevel="3.1.0">
+<iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="1">
+  <iq:application
+    entry="StriveApp"
+    id="C3D39C12C10DCB1EC9E4AEFFABF5A0B5"
+    launcherIcon="@Drawables.LauncherIcon"
+    minApiLevel="4.2.0"
+    name="@Strings.AppName"
+    type="watch-app">
 
-      <iq:products>
-        <iq:product id="fenix7"/>
-        <iq:product id="fr965"/>
-        <iq:product id="venu3"/>
-        <iq:product id="epix2"/>
-      </iq:products>
+    <iq:products>
+      <iq:product id="fenix8pro47mm"/>
+    </iq:products>
 
-      <iq:permissions>
-        <iq:uses-permission id="Fit"/>
-      </iq:permissions>
+    <iq:permissions>
+      <iq:uses-permission id="Fit"/>
+    </iq:permissions>
 
-      <iq:languages>
-        <iq:language>eng</iq:language>
-      </iq:languages>
-    </iq:application>
-  </iq:manifest>
-</manifest>
+    <iq:languages>
+      <iq:language>eng</iq:language>
+    </iq:languages>
+  </iq:application>
+</iq:manifest>
