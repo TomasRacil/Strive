@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Ruler, Weight, Download, Upload, Database, Calendar, Watch, CheckCircle2 } from 'lucide-react';
+import { Ruler, Weight, Download, Upload, Database, Calendar, Watch, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useHistory } from '../hooks/useHistory';
+import { checkForUpdate } from '../pwa.js';
 
 const Profile = () => {
   const [height, setHeight] = useState('');
@@ -8,6 +9,7 @@ const Profile = () => {
   const [birthDate, setBirthDate] = useState('');
   const [saved, setSaved] = useState(false);
   const [garminStatus, setGarminStatus] = useState('');
+  const [updateState, setUpdateState] = useState({ checking: false, message: '' });
   const { importSessions } = useHistory();
 
   useEffect(() => {
@@ -134,6 +136,24 @@ const Profile = () => {
       e.target.value = '';
     };
     reader.readAsText(file);
+  };
+
+  const handleCheckUpdate = async () => {
+    setUpdateState({ checking: true, message: '' });
+    const result = await checkForUpdate();
+
+    if (result === 'updated') {
+      setUpdateState({ checking: false, message: 'New version found — reloading…' });
+      setTimeout(() => window.location.reload(), 1200);
+      return;
+    }
+
+    setUpdateState({
+      checking: false,
+      message: result === 'current'
+        ? `You are on the latest build (${__BUILD_ID__}).`
+        : 'This browser has no service worker registered, so there is nothing to update.'
+    });
   };
 
   return (
@@ -264,6 +284,34 @@ const Profile = () => {
           Sets recorded on the watch keep their Garmin exercise names when they are not in
           your library. See <code>garmin/README.md</code> for first-run setup.
         </p>
+      </div>
+
+      <div className="glass" style={{
+        padding: '20px',
+        marginTop: '25px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '15px',
+        flexWrap: 'wrap'
+      }}>
+        <div>
+          <div style={{ fontSize: '14px', fontWeight: '700' }}>App version</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Build {__BUILD_ID__}</div>
+          {updateState.message && (
+            <div style={{ fontSize: '11px', color: 'var(--primary-color)', marginTop: '6px' }}>
+              {updateState.message}
+            </div>
+          )}
+        </div>
+        <button
+          className="btn-secondary"
+          onClick={handleCheckUpdate}
+          disabled={updateState.checking}
+          style={{ padding: '10px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
+          <RefreshCw size={14} /> {updateState.checking ? 'Checking…' : 'Check for updates'}
+        </button>
       </div>
     </div>
   );
