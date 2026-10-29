@@ -17,9 +17,10 @@
       <iq:product id="fenix847mm"/>
     </iq:products>
 
-    <iq:permissions>
-      <iq:uses-permission id="Fit"/>
-    </iq:permissions>
+    <!-- No Fit permission: this app never records a FIT activity, and declaring
+         it is what gets an app filed alongside Gym and Running instead of with
+         the other apps. -->
+    <iq:permissions/>
 
     <iq:languages>
       <iq:language>eng</iq:language>

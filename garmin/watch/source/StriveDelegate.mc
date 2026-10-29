@@ -27,7 +27,12 @@ class StriveDelegate extends Ui.InputDelegate {
         }
 
         if (key == Ui.KEY_ENTER) {
-            view.logSet();
+            // While resting, START cuts the rest short instead of logging a set.
+            if (view.isResting()) {
+                view.skipRest();
+            } else {
+                view.logSet();
+            }
             Ui.requestUpdate();
             return true;
         }
