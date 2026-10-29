@@ -1,0 +1,8 @@
+{
+  "appId": "com.strive.app",
+  "appName": "Strive",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  }
+}

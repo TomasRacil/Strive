@@ -68,6 +68,24 @@ site is published from an Actions artifact. Pushing a build to a `gh-pages`
 branch does nothing here — an earlier `npm run deploy` script did exactly that
 and silently had no effect.
 
+## Android app
+
+The web app is wrapped with Capacitor so it installs as a real Android app:
+
+```bash
+npm run build
+npx cap sync android
+cd android && ./gradlew assembleDebug
+```
+
+APK: `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+Install on a connected phone: `adb install -r <apk>`.
+
+The wrapper exists for one reason beyond a launcher icon: the Connect IQ Mobile
+SDK is native-only, so anything that talks to a Garmin watch has to go through
+Kotlin code behind a Capacitor plugin. It cannot be done from the web layer.
+
 ## Architecture
 
 ```
