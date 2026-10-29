@@ -7,7 +7,7 @@
 # watch; the manifest must list the same id.
 
 param(
-    [string]$Device = "fenix8pro47mm",
+    [string]$Device = "fenix847mm",
     [string]$Deploy = "",
     [string]$Sdk = ""
 )

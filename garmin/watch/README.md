@@ -53,27 +53,34 @@ cd garmin\watch
 .\build.ps1
 ```
 
-Defaults to `fenix8pro47mm` and reads the active SDK path from
+Defaults to `fenix847mm` and reads the active SDK path from
 `%APPDATA%\Garmin\ConnectIQ\current-sdk.cfg`, so it keeps working after an SDK
-update. Output: `build\Strive-fenix8pro47mm.prg`.
+update. Output: `build\Strive-fenix847mm.prg`.
 
 The device id must also be listed in `manifest.xml` under `<iq:products>`.
 Device ids live in `%APPDATA%\Garmin\ConnectIQ\Devices\` — the folder names are
 the ids.
 
-Verified building against Connect IQ 9.3.0 for `fenix8pro47mm`.
+Verified building against Connect IQ 9.3.0 for `fenix847mm`.
 
 ## Sideload
 
-1. Plug the watch in by USB. It mounts as a drive.
-2. Copy `build\Strive-fenix8pro47mm.prg` into `GARMIN\APPS` on that drive.
-3. Unplug. The app appears in the watch's app list.
+The watch presents as an **MTP device**, not a USB drive, so there is no drive
+letter. Copy the `.prg` into `Internal Storage\GARMIN\Apps` through Explorer (or
+the COM helper used during development). Then unplug and restart the watch once:
+Connect IQ apps are indexed at boot.
 
-Or in one step, if the watch is mounted at `E:`:
+Or in one step, if the watch is mounted as a drive at `E:`:
 
 ```powershell
 .\build.ps1 -Deploy E:\
 ```
+
+**The device id must match the watch exactly.** A `.prg` built for the wrong
+product is silently ignored and removed from `GARMIN\Apps`. Get the id from the
+watch itself: `GARMIN\GarminDevice.xml` contains the part number (for example
+`006-B4536-00`), and the matching folder under
+`%APPDATA%\Garmin\ConnectIQ\Devices\` is the device id.
 
 ## Layout
 
