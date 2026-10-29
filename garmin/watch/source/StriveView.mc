@@ -35,6 +35,18 @@ class StriveView extends Ui.View {
         Ui.requestUpdate();
     }
 
+    function setWeight(value) {
+        weight = value.toFloat();
+        if (weight < 0.0) {
+            weight = 0.0;
+        }
+        Ui.requestUpdate();
+    }
+
+    function openWeightPicker() {
+        Ui.pushView(new WeightPicker(weight), new WeightPickerDelegate(self), Ui.SLIDE_IMMEDIATE);
+    }
+
     function logSet() {
         var exercise = currentExercise();
         sets = sets + 1;
@@ -81,6 +93,6 @@ class StriveView extends Ui.View {
         );
 
         dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, height * 0.88, Gfx.FONT_XTINY, "up/down load  select set  back next", Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(width / 2, height * 0.88, Gfx.FONT_XTINY, "tap sides: load   tap middle: pick", Gfx.TEXT_JUSTIFY_CENTER);
     }
 }

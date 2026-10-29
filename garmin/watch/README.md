@@ -3,6 +3,22 @@
 A sideloaded watch app that puts the *recommended* weight on your wrist and logs
 sets without a phone.
 
+## Controls
+
+    middle-left     load +2.5 kg
+    bottom-left     load −2.5 kg
+    top-right       log a set
+    bottom-right    next exercise
+
+    tap left third      load −2.5 kg
+    tap right third     load +2.5 kg
+    tap middle          weight wheel — scroll to any load in 2.5 kg steps
+    swipe up            log a set
+    swipe left/right    next / previous exercise
+
+Buttons are kept first-class on purpose: gloves and sweaty hands make the
+touchscreen unreliable exactly when you need to log a set.
+
 ## What it does
 
 - One screen per exercise: recommended load, target reps, sets logged this session.
