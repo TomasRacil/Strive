@@ -1,5 +1,13 @@
 # Strive watch app (Connect IQ / Monkey C)
 
+> **Status: does not work on fenix 8 (firmware 23.40).** Sideloaded apps install,
+> run once from the install notification, and never register in the app list.
+> Garmin's own RecordSample behaves identically, so this is not an app defect.
+> Garmin support has stated sideloading is not a supported loading method and was
+> likely removed with Garmin Connect 5.0. Distribution requires publishing to the
+> Connect IQ Store. The code below is kept because it compiles and runs; it is
+> only the install path that is closed.
+
 A sideloaded watch app that puts the *recommended* weight on your wrist and logs
 sets without a phone.
 
