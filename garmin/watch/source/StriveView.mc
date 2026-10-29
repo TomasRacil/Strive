@@ -93,6 +93,6 @@ class StriveView extends Ui.View {
         );
 
         dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, height * 0.88, Gfx.FONT_XTINY, "tap sides: load   tap middle: pick", Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(width / 2, height * 0.80, Gfx.FONT_XTINY, "sides: load   mid: pick", Gfx.TEXT_JUSTIFY_CENTER);
     }
 }
