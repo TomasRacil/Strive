@@ -46,6 +46,7 @@ npm run lint
 
 ### Garmin
 - **Push plans** — routines become structured Garmin strength workouts on the watch.
+- **Recommended loads** — the plan carries the weight the engine recommends for each lift, derived from your last session and RIR. Garmin's strength app displays a planned weight but never chooses it; this does.
 - **Pull sessions** — watch-recorded sets (weight and reps) import back into history.
 
 See [garmin/README.md](garmin/README.md) for setup and the trade-offs against a

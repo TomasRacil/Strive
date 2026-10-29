@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Play, Plus, Search, ChevronRight, Check, List, Trash2, Zap } from 'lucide-react';
+import { Play, Plus, Search, ChevronRight, Check, List, Trash2, Zap, Target } from 'lucide-react';
 import { useExercises } from '../hooks/useExercises';
 import { useHistory } from '../hooks/useHistory';
 import CustomSelect from '../components/CustomSelect';
@@ -9,6 +9,7 @@ import FinishExerciseModal from '../components/FinishExerciseModal';
 import ExerciseModal from '../components/ExerciseModal';
 import RestTimer from '../components/RestTimer';
 import TrainingGoalModal from '../components/TrainingGoalModal';
+import PlanPreviewModal from '../components/PlanPreviewModal';
 import { suggestNextWeight, suggestNextReps, getBenchmarkProgression, findLastSet, findBest1RM, estimate1RM } from '../utils/engine';
 import { unlockAudio } from '../utils/audio';
 
@@ -60,6 +61,7 @@ const Training = ({ activeSession, setActiveSession }) => {
   const [trainingGoal, setTrainingGoal] = useState(() => restored?.trainingGoal ?? 'build_muscle');
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
+  const [planRoutine, setPlanRoutine] = useState(null);
   const [notice, setNotice] = useState('');
 
   const [weight, setWeight] = useState('');
@@ -474,6 +476,14 @@ const Training = ({ activeSession, setActiveSession }) => {
                 <button 
                   className="btn-secondary" 
                   style={{ padding: '8px', minWidth: '36px', height: '36px' }}
+                  title="Plan next session with recommended loads"
+                  onClick={() => setPlanRoutine(routine)}
+                >
+                  <Target size={16} />
+                </button>
+                <button 
+                  className="btn-secondary" 
+                  style={{ padding: '8px', minWidth: '36px', height: '36px' }}
                   onClick={() => {
                     setEditingRoutine(routine);
                     setShowRoutineForm(true);
@@ -520,6 +530,14 @@ const Training = ({ activeSession, setActiveSession }) => {
 
         {showGoalModal && (
           <TrainingGoalModal onSelect={confirmStart} />
+        )}
+
+        {planRoutine && (
+          <PlanPreviewModal
+            routine={planRoutine}
+            history={history}
+            onClose={() => setPlanRoutine(null)}
+          />
         )}
       </div>
     );
