@@ -10,6 +10,9 @@ class StriveDelegate extends Ui.InputDelegate {
         view = targetView;
     }
 
+    // BACK is deliberately not intercepted: it must exit the app like every
+    // other watch app, otherwise there is no discoverable way out. Exercise
+    // navigation lives on swipes.
     function onKey(evt) {
         var key = evt.getKey();
 
@@ -26,11 +29,6 @@ class StriveDelegate extends Ui.InputDelegate {
         if (key == Ui.KEY_ENTER) {
             view.logSet();
             Ui.requestUpdate();
-            return true;
-        }
-
-        if (key == Ui.KEY_ESC) {
-            view.nextExercise();
             return true;
         }
 
