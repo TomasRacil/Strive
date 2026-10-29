@@ -56,6 +56,17 @@ custom Connect IQ watch app.
 - [ ] Optional cloud sync for cross-device history
 - [ ] Connect IQ watch app, if the native strength UI proves too limiting
 
+## Deployment
+
+Pushing to `master` deploys automatically via `.github/workflows/deploy.yml`
+(GitHub Actions → Pages). The workflow runs lint, tests and the build before
+publishing, so a broken commit cannot go live.
+
+Pages for this repo is configured with `build_type: workflow`, which means the
+site is published from an Actions artifact. Pushing a build to a `gh-pages`
+branch does nothing here — an earlier `npm run deploy` script did exactly that
+and silently had no effect.
+
 ## Architecture
 
 ```
