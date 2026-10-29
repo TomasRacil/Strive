@@ -31,3 +31,17 @@ __pycache__/
 .strive_garmin_tokens
 garmin_sessions.json
 strive_garmin_routines.json
+
+# Native Android app (Kotlin)
+mobile/.gradle
+mobile/build
+mobile/app/build
+mobile/local.properties
+mobile/.idea
+mobile/captures
+*.apk
+*.aab
+
+# Connect IQ build output and signing key
+garmin/watch/build/
+garmin/watch/keys/

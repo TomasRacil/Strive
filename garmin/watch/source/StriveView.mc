@@ -2,6 +2,7 @@ using Toybox.WatchUi as Ui;
 using Toybox.Graphics as Gfx;
 using Toybox.Timer as Timer;
 using Toybox.Attention as Attention;
+using Toybox.Communications as Comm;
 
 // One screen per exercise: the recommended load, the target reps, how many sets
 // you have logged this session, and a rest countdown between sets.
@@ -29,9 +30,23 @@ class StriveView extends Ui.View {
 
     function loadExercise() {
         var exercise = currentExercise();
-        weight = Progress.suggest(exercise[:id], 20.0);
+        // A weight pushed from the phone wins over the watch's own guess: the
+        // phone has the whole history behind it, the watch only its own record.
+        var planned = Plan.weightFor(exercise[:id]);
+        if (planned != null) {
+            weight = planned;
+        } else {
+            weight = Progress.suggest(exercise[:id], 20.0);
+        }
         sets = 0;
         stopRest();
+    }
+
+    function reloadFromPlan() {
+        var planned = Plan.weightFor(currentExercise()[:id]);
+        if (planned != null) {
+            weight = planned;
+        }
     }
 
     function adjustWeight(delta) {

@@ -20,7 +20,10 @@
     <!-- No Fit permission: this app never records a FIT activity, and declaring
          it is what gets an app filed alongside Gym and Running instead of with
          the other apps. -->
-    <iq:permissions/>
+    <iq:permissions>
+      <!-- Phone <-> watch messages for the companion app. -->
+      <iq:uses-permission id="Communications"/>
+    </iq:permissions>
 
     <iq:languages>
       <iq:language>eng</iq:language>
