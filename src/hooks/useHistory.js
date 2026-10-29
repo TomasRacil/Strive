@@ -1,69 +1,79 @@
 import { useState, useEffect } from 'react';
+import { calculateStreak } from '../utils/stats';
 
 const HISTORY_KEY = 'strive_workout_history';
+
+const readHistory = () => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
 export const useHistory = () => {
   const [history, setHistory] = useState([]);
 
   useEffect(() => {
-    setHistory(JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'));
+    setHistory(readHistory());
   }, []);
 
   const saveSession = (sets, metadata = {}) => {
-    if (sets.length === 0) return;
-    const currentHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    if (!sets || sets.length === 0) return;
+    const currentHistory = readHistory();
     const newSession = {
       id: Date.now().toString(),
       timestamp: new Date().toISOString(),
       sets,
       goal: metadata.goal || 'build_muscle',
       duration: metadata.duration || 0,
-      version: '1.0' // Storage versioning
+      routineName: metadata.routineName || null,
+      source: metadata.source || 'strive',
+      version: '1.1'
     };
     const updatedHistory = [newSession, ...currentHistory];
     localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
     setHistory(updatedHistory);
   };
 
-  const getStreak = () => {
-    if (history.length === 0) return 0;
-    
-    let streak = 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    let checkDate = new Date(today);
-    
-    // Sort history by date descending
-    const sortedHistory = [...history].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    
-    for (let i = 0; i < sortedHistory.length; i++) {
-      const workoutDate = new Date(sortedHistory[i].timestamp);
-      workoutDate.setHours(0, 0, 0, 0);
-      
-      const diffDays = Math.floor((checkDate - workoutDate) / (1000 * 60 * 60 * 24));
-      
-      if (diffDays === 0) {
-        streak++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else if (diffDays > 1) {
-        break;
-      }
-    }
-    return streak;
-  };
+  const getStreak = () => calculateStreak(history);
 
   const deleteSession = (id) => {
-    const updatedHistory = history.filter(s => s.id !== id);
+    const updatedHistory = readHistory().filter(s => s.id !== id);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
     setHistory(updatedHistory);
   };
 
   const updateSession = (id, updatedSession) => {
-    const updatedHistory = history.map(s => s.id === id ? updatedSession : s);
+    const updatedHistory = readHistory().map(s => s.id === id ? updatedSession : s);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
     setHistory(updatedHistory);
   };
 
-  return { history, saveSession, getStreak, deleteSession, updateSession };
+  /**
+   * Merge externally produced sessions (e.g. pulled from Garmin) into history.
+   * Duplicates are dropped by id so re-importing the same file is a no-op.
+   * Returns how many sessions were actually added.
+   */
+  const importSessions = (sessions) => {
+    if (!Array.isArray(sessions) || sessions.length === 0) return 0;
+
+    const current = readHistory();
+    const known = new Set(current.map(s => s.id));
+    const incoming = sessions.filter(s =>
+      s && s.id && !known.has(s.id) && Array.isArray(s.sets) && s.sets.length > 0
+    );
+
+    if (incoming.length === 0) return 0;
+
+    const updatedHistory = [...incoming, ...current]
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
+    setHistory(updatedHistory);
+    return incoming.length;
+  };
+
+  return { history, saveSession, getStreak, deleteSession, updateSession, importSessions };
 };

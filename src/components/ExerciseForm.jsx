@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, X, ListPlus } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 

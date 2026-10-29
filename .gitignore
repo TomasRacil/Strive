@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Garmin bridge
+garmin/.venv
+garmin/__pycache__
+__pycache__/
+*.pyc
+.strive_garmin_tokens
+garmin_sessions.json
+strive_garmin_routines.json

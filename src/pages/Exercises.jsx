@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
-import { Plus, Search, Trash2, List } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, Search, Trash2, List, TrendingUp } from 'lucide-react';
 import { useExercises } from '../hooks/useExercises';
+import { useHistory } from '../hooks/useHistory';
 import ExerciseModal from '../components/ExerciseModal';
+import ExerciseProgressModal from '../components/ExerciseProgressModal';
 
 const Exercises = () => {
   const { exercises, addExercise, deleteExercise, updateExercise } = useExercises();
+  const { history } = useHistory();
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingExercise, setEditingExercise] = useState(null);
+  const [progressExercise, setProgressExercise] = useState(null);
 
   const filteredExercises = exercises.filter(e => 
     e.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -52,6 +56,13 @@ const Exercises = () => {
                 {exercise.type.replace(/_/g, ' ')}
               </span>
               <button 
+                onClick={() => setProgressExercise(exercise)}
+                title="Progress"
+                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+              >
+                <TrendingUp size={18} />
+              </button>
+              <button 
                 onClick={() => setEditingExercise(exercise)}
                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
               >
@@ -88,6 +99,13 @@ const Exercises = () => {
             setShowModal(false);
             setEditingExercise(null);
           }}
+        />
+      )}
+      {progressExercise && (
+        <ExerciseProgressModal
+          exercise={progressExercise}
+          history={history}
+          onClose={() => setProgressExercise(null)}
         />
       )}
     </div>

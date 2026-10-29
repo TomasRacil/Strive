@@ -1,0 +1,4 @@
+# Tested against 0.3.20. The bridge relies on typed strength workout models
+# (create_strength_set), upload_workout and get_activity_exercise_sets, so do
+# not loosen this pin without re-running garmin/test_convert.py.
+garminconnect[workout]>=0.3.20

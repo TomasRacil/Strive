@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, Trash2, Calendar, Clock } from 'lucide-react';
 
 const SessionDetailsModal = ({ session, onClose, onDelete, exercises }) => {
@@ -47,10 +46,11 @@ const SessionDetailsModal = ({ session, onClose, onDelete, exercises }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1, overflowY: 'auto' }}>
           {Object.entries(groups).map(([exId, exSets]) => {
             const ex = exercises.find(e => e.id === exId);
+            const fallbackName = exSets[0]?.exerciseName;
             return (
               <div key={exId}>
                 <h3 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '10px', color: 'var(--primary-color)' }}>
-                  {ex?.name || 'Unknown Exercise'}
+                  {ex?.name || fallbackName || 'Unknown Exercise'}
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {exSets.map((set, i) => (
@@ -63,7 +63,9 @@ const SessionDetailsModal = ({ session, onClose, onDelete, exercises }) => {
                       borderRadius: '8px'
                     }}>
                       <span>Set {i + 1}: <strong>{set.weight}kg</strong> × {set.reps}</span>
-                      <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>{set.rir} RIR • {set.form}</span>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
+                        {set.rir != null ? `${set.rir} RIR • ` : ''}{set.form}
+                      </span>
                     </div>
                   ))}
                 </div>

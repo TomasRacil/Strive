@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Play, Plus, Search, ChevronRight, Check, List, Trash2, Zap, X } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Play, Plus, Search, ChevronRight, Check, List, Trash2, Zap } from 'lucide-react';
 import { useExercises } from '../hooks/useExercises';
 import { useHistory } from '../hooks/useHistory';
 import CustomSelect from '../components/CustomSelect';
@@ -9,69 +9,137 @@ import FinishExerciseModal from '../components/FinishExerciseModal';
 import ExerciseModal from '../components/ExerciseModal';
 import RestTimer from '../components/RestTimer';
 import TrainingGoalModal from '../components/TrainingGoalModal';
-import { suggestNextWeight, suggestNextReps, getBenchmarkProgression } from '../utils/engine';
+import { suggestNextWeight, suggestNextReps, getBenchmarkProgression, findLastSet, findBest1RM, estimate1RM } from '../utils/engine';
+import { unlockAudio } from '../utils/audio';
 
+// These ids must exist in src/data/exercises.json. They previously did not
+// ('squat' vs 'squats', 'pull_up' vs 'pull_ups'), so the strength test ran
+// against exercises that were never in the library and the logged sets could
+// not be resolved when reviewing history.
 const BENCHMARK_EXERCISES = [
   { id: 'bench_press', name: 'Bench Press', type: 'chest', startRatio: 0.4 },
-  { id: 'squat', name: 'Squat', type: 'legs', startRatio: 0.5 },
-  { id: 'pull_up', name: 'Pull-up', type: 'back', startRatio: 0.3 },
+  { id: 'squats', name: 'Squat', type: 'legs', startRatio: 0.5 },
+  { id: 'pull_ups', name: 'Pull-up', type: 'back', startRatio: 0.3 },
   { id: 'overhead_press', name: 'Overhead Press', type: 'shoulders', startRatio: 0.3 },
   { id: 'deadlift', name: 'Deadlift', type: 'hips/back', startRatio: 0.6 }
 ];
 
-const Training = ({ apiKey, activeSession, setActiveSession }) => {
+// A gym session is long and phones get locked or apps get killed. Keeping the
+// in-flight session on disk means a reload resumes instead of losing the workout.
+const ACTIVE_SESSION_KEY = 'strive_active_session';
+
+const readSavedSession = () => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(ACTIVE_SESSION_KEY) || 'null');
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const Training = ({ activeSession, setActiveSession }) => {
   const { exercises, updateExercise, addExercise } = useExercises();
   const { history, saveSession } = useHistory();
   const { routines, addRoutine, deleteRoutine } = useRoutines();
-  
-  const [currentExerciseId, setCurrentExerciseId] = useState(null);
+
+  const restored = useMemo(() => readSavedSession(), []);
+
+  const [currentExerciseId, setCurrentExerciseId] = useState(() => restored?.currentExerciseId ?? null);
   const [showSelector, setShowSelector] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showRoutineForm, setShowRoutineForm] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState(null);
-  const [activeRoutine, setActiveRoutine] = useState(null);
-  const [routineStep, setRoutineStep] = useState(0);
+  const [activeRoutine, setActiveRoutine] = useState(() => restored?.activeRoutine ?? null);
+  const [routineStep, setRoutineStep] = useState(() => restored?.routineStep ?? 0);
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showFinishModal, setShowFinishModal] = useState(false);
-  const [isBenchmarkMode, setIsBenchmarkMode] = useState(false);
-  const [lastActionTime, setLastActionTime] = useState(null);
-  const [sessionStartTime, setSessionStartTime] = useState(null);
-  const [trainingGoal, setTrainingGoal] = useState('build_muscle');
+  const [finishMode, setFinishMode] = useState('exercise');
+  const [isBenchmarkMode, setIsBenchmarkMode] = useState(() => restored?.isBenchmarkMode ?? false);
+  const [lastActionTime, setLastActionTime] = useState(() => restored?.lastActionTime ?? null);
+  const [sessionStartTime, setSessionStartTime] = useState(() => restored?.sessionStartTime ?? null);
+  const [trainingGoal, setTrainingGoal] = useState(() => restored?.trainingGoal ?? 'build_muscle');
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
+  const [notice, setNotice] = useState('');
 
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [rir, setRir] = useState(null);
   const [selectedForm, setSelectedForm] = useState('');
-  const [sets, setSets] = useState([]);
-  const [plannedSets, setPlannedSets] = useState(null);
-  
+  const [sets, setSets] = useState(() => restored?.sets ?? []);
+  const [plannedSets, setPlannedSets] = useState(() => restored?.plannedSets ?? null);
+  const [plannedReps, setPlannedReps] = useState(() => restored?.plannedReps ?? null);
+  const [plannedRest, setPlannedRest] = useState(() => restored?.plannedRest ?? null);
+
   const currentExercise = exercises.find(e => e.id === currentExerciseId);
   const currentExerciseSets = sets.filter(s => s.exerciseId === currentExerciseId);
   const currentSetNumber = currentExerciseSets.length + 1;
 
+  // Resume an interrupted session on mount.
   useEffect(() => {
-    if (currentExercise) {
-      if (currentExercise.forms && currentExercise.forms.length > 0) {
-        setSelectedForm(currentExercise.forms[0]);
-      }
-      
-      // Load template OR suggest based on engine
-      if (currentExercise.template) {
-        const lastSet = { 
-          weight: currentExercise.template.weight, 
-          reps: currentExercise.template.reps, 
-          rir: currentExercise.template.rir || 0 
-        };
-        setWeight(suggestNextWeight(lastSet, trainingGoal)?.toString() || '');
-        setReps(suggestNextReps(lastSet, trainingGoal)?.toString() || '');
-      } else {
-        setWeight('');
-        setReps('');
-      }
+    if (restored && ((restored.sets?.length ?? 0) > 0 || restored.sessionStartTime)) {
+      setActiveSession(true);
     }
-  }, [currentExerciseId, currentExercise]);
+  }, [restored, setActiveSession]);
+
+  // Persist (or clear) the in-flight session.
+  useEffect(() => {
+    const hasContent = sets.length > 0 || Boolean(sessionStartTime);
+    if (activeSession && hasContent) {
+      localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({
+        version: 1,
+        sets,
+        currentExerciseId,
+        sessionStartTime,
+        lastActionTime,
+        trainingGoal,
+        activeRoutine,
+        routineStep,
+        plannedSets,
+        plannedReps,
+        plannedRest,
+        isBenchmarkMode
+      }));
+    } else if (!activeSession) {
+      localStorage.removeItem(ACTIVE_SESSION_KEY);
+    }
+  }, [activeSession, sets, currentExerciseId, sessionStartTime, lastActionTime, trainingGoal, activeRoutine, routineStep, plannedSets, plannedReps, plannedRest, isBenchmarkMode]);
+
+  // Auto-clear transient notices.
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(''), 3500);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  useEffect(() => {
+    if (!currentExercise) return;
+
+    if (currentExercise.forms && currentExercise.forms.length > 0) {
+      setSelectedForm(currentExercise.forms[0]);
+    }
+
+    // Seed the inputs from what you actually lifted last time for this
+    // exercise, falling back to a saved template, then to empty.
+    const fromHistory = findLastSet(history, currentExercise.id);
+    const seed = fromHistory || (currentExercise.template
+      ? { ...currentExercise.template, rir: currentExercise.template.rir ?? 0 }
+      : null);
+
+    if (seed) {
+      const nextWeight = suggestNextWeight(seed, trainingGoal);
+      // A routine's programmed rep target beats the generic suggestion.
+      const nextReps = plannedReps ?? suggestNextReps(seed, trainingGoal);
+      setWeight(nextWeight != null ? String(nextWeight) : '');
+      setReps(nextReps != null ? String(nextReps) : '');
+    } else if (plannedReps) {
+      setWeight('');
+      setReps(String(plannedReps));
+    } else {
+      setWeight('');
+      setReps('');
+    }
+  }, [currentExerciseId, currentExercise, trainingGoal, history, plannedReps]);
 
   const startBenchmark = () => {
     setIsBenchmarkMode(true);
@@ -80,10 +148,10 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
     const now = new Date().toISOString();
     setSessionStartTime(now);
     setLastActionTime(now);
-    
+
     const firstEx = BENCHMARK_EXERCISES[0];
     const exercise = exercises.find(e => e.id === firstEx.id);
-    
+
     setCurrentExerciseId(firstEx.id);
     const userWeight = parseFloat(localStorage.getItem('strive_weight') || '75');
 
@@ -98,16 +166,16 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
     }
   };
 
-  const nextBenchmarkStep = (rir) => {
-    if (rir === 0) {
+  const nextBenchmarkStep = (currentRir) => {
+    if (currentRir === 0) {
       // Limit found! Move to next muscle group
       const currentIndex = BENCHMARK_EXERCISES.findIndex(ex => ex.id === currentExerciseId);
       if (currentIndex < BENCHMARK_EXERCISES.length - 1) {
         const nextExData = BENCHMARK_EXERCISES[currentIndex + 1];
         const nextEx = exercises.find(e => e.id === nextExData.id);
-        
+
         setCurrentExerciseId(nextExData.id);
-        
+
         if (nextEx?.template) {
           setWeight((Math.floor(nextEx.template.weight * 0.5 / 2.5) * 2.5).toString());
           setReps('10');
@@ -117,18 +185,19 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
           setWeight(guessedWeight.toString());
           setReps('10');
         }
-        
-        alert(`Limit found! Now let's test your ${nextExData.type}.`);
+
+        setNotice(`Limit found. Next: ${nextExData.name}.`);
       } else {
-        alert("Strength Test complete! Your power profile has been updated.");
-        endTraining();
+        setNotice('Strength test complete. Your power profile has been updated.');
+        setFinishMode('session');
+        setShowFinishModal(true);
       }
     } else {
       // Keep pushing
-      const nextWeight = getBenchmarkProgression(parseFloat(weight), rir);
+      const nextWeight = getBenchmarkProgression(parseFloat(weight), currentRir);
       setWeight(nextWeight.toString());
       setReps('3'); // Once we're close to limit, drop reps to 3 for max strength
-      alert(`Great! Let's increase the load to ${nextWeight}kg for the next step.`);
+      setNotice(`Add load: ${nextWeight}kg for the next step.`);
     }
   };
 
@@ -158,6 +227,8 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
       const firstEx = routine.exercises[0];
       setCurrentExerciseId(firstEx.id);
       setPlannedSets(firstEx.targetSets);
+      setPlannedReps(firstEx.targetReps ?? null);
+      setPlannedRest(firstEx.restSeconds ?? null);
       setActiveSession(true);
       const now = new Date().toISOString();
       setSessionStartTime(now);
@@ -170,6 +241,10 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
     setCurrentExerciseId(exerciseId);
     setActiveSession(true);
     setShowSelector(false);
+    // Picking a lift by hand leaves the routine's programming behind.
+    setPlannedSets(null);
+    setPlannedReps(null);
+    setPlannedRest(null);
   };
 
   const startRoutine = (routine) => {
@@ -185,59 +260,75 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
         const nextEx = activeRoutine.exercises[nextStep];
         setCurrentExerciseId(nextEx.id);
         setPlannedSets(nextEx.targetSets);
-        return;
-      } else {
-        // Routine complete!
-        setShowFinishModal(true);
+        setPlannedReps(nextEx.targetReps ?? null);
+        setPlannedRest(nextEx.restSeconds ?? null);
         return;
       }
+      // Routine complete
+      setFinishMode('session');
+      setShowFinishModal(true);
+      return;
     }
+    // Free training: let the user decide what happens to this exercise's sets
+    // before moving on. Previously this jumped straight to the picker, so the
+    // "set as template" option only ever appeared when ending the whole session.
+    setFinishMode('exercise');
+    setShowFinishModal(true);
+  };
+
+  const sessionDuration = () => (sessionStartTime
+    ? Math.floor((Date.now() - new Date(sessionStartTime).getTime()) / 1000)
+    : 0);
+
+  const handleExerciseDone = (action) => {
+    const exerciseSets = sets.filter(s => s.exerciseId === currentExerciseId);
+
+    if (action === 'template' && exerciseSets.length > 0) {
+      // Use the heaviest set as the template, not the last one: a back-off set
+      // would otherwise become the baseline for next week.
+      const best = exerciseSets.reduce((a, b) => (b.weight >= a.weight ? b : a));
+      updateExercise(currentExerciseId, {
+        template: { weight: best.weight, reps: best.reps, sets: exerciseSets.length, rir: best.rir }
+      });
+    }
+
+    if (action === 'discard') {
+      setSets(prev => prev.filter(s => s.exerciseId !== currentExerciseId));
+    }
+
+    setShowFinishModal(false);
     setShowSelector(true);
   };
 
-  const handleFinishExercise = (action) => {
-    if (action === 'template' || action === 'save') {
-      const exerciseSets = sets.filter(s => s.exerciseId === currentExerciseId);
-      if (action === 'template' && exerciseSets.length > 0) {
-        const lastSet = exerciseSets[exerciseSets.length - 1];
-        updateExercise(currentExerciseId, {
-          template: {
-            weight: lastSet.weight,
-            reps: lastSet.reps,
-            sets: exerciseSets.length
-          }
-        });
-      }
+  const handleSessionDone = (action) => {
+    if (action !== 'discard') {
       saveSession(sets, {
         goal: trainingGoal,
-        duration: sessionStartTime ? Math.floor((new Date() - new Date(sessionStartTime)) / 1000) : 0
-      });
-    } else if (action === 'discard') {
-      const filteredSets = sets.filter(s => s.exerciseId !== currentExerciseId);
-      saveSession(filteredSets, {
-        goal: trainingGoal,
-        duration: sessionStartTime ? Math.floor((new Date() - new Date(sessionStartTime)) / 1000) : 0
-      });
-    } else {
-      // Basic save
-      saveSession(sets, {
-        goal: trainingGoal,
-        duration: sessionStartTime ? Math.floor((new Date() - new Date(sessionStartTime)) / 1000) : 0
+        duration: sessionDuration(),
+        routineName: activeRoutine?.name || null
       });
     }
-    
     resetTrainingState();
   };
 
   const resetTrainingState = () => {
+    localStorage.removeItem(ACTIVE_SESSION_KEY);
     setShowFinishModal(false);
     setActiveSession(false);
     setSets([]);
     setPlannedSets(null);
+    setPlannedReps(null);
+    setPlannedRest(null);
     setShowSelector(false);
     setCurrentExerciseId(null);
     setActiveRoutine(null);
     setRoutineStep(0);
+    setSessionStartTime(null);
+    setLastActionTime(null);
+    setIsBenchmarkMode(false);
+    setRir(null);
+    setReps('');
+    setWeight('');
   };
 
   const endTraining = () => {
@@ -245,26 +336,48 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
       resetTrainingState();
       return;
     }
+    setFinishMode('session');
     setShowFinishModal(true);
   };
 
   const logSet = (goToNextExercise = false) => {
-    if (!weight || !reps || rir === null) {
-      alert("Please enter weight, reps and select RIR.");
+    if (!currentExerciseId) {
+      setNotice('Choose an exercise first.');
+      return;
+    }
+    if (weight === '' || reps === '' || rir === null) {
+      setNotice('Enter weight, reps and pick RIR.');
       return;
     }
 
     const newSet = {
       exerciseId: currentExerciseId,
+      exerciseName: currentExercise?.name || null,
       weight: parseFloat(weight),
-      reps: parseInt(reps),
+      reps: parseInt(reps, 10),
       rir,
       form: selectedForm,
       timestamp: new Date().toISOString()
     };
 
+    // A PR is a new best estimated 1RM for this lift across all history plus the
+    // sets already logged in this session.
+    const previousBest = findBest1RM(history, currentExerciseId, sets);
+    const newEstimate = estimate1RM(newSet.weight, newSet.reps, newSet.rir);
+    newSet.isPR = previousBest > 0 && newEstimate > previousBest;
+
     setSets([...sets, newSet]);
-    
+    // The rest timer counts from the last logged set, so it has to move on
+    // every log. It used to be set once at session start and never again.
+    setLastActionTime(newSet.timestamp);
+
+    // Unlocking here (a user gesture) lets the rest timer beep later on.
+    unlockAudio();
+
+    if (newSet.isPR) {
+      setNotice(`New PR on ${currentExercise?.name || 'this lift'}: ~${Math.round(newEstimate)} kg 1RM`);
+    }
+
     if (isBenchmarkMode) {
       nextBenchmarkStep(rir);
       setRir(null);
@@ -273,16 +386,48 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
 
     setReps('');
     setRir(null);
-    
+
     if (goToNextExercise) {
       finishExercise();
     }
   };
 
+  const noticeBanner = notice ? (
+    <div
+      className="glass"
+      style={{
+        position: 'fixed',
+        left: '50%',
+        bottom: '95px',
+        transform: 'translateX(-50%)',
+        padding: '12px 18px',
+        zIndex: 60,
+        border: '1px solid var(--primary-color)',
+        fontSize: '13px',
+        maxWidth: '90vw',
+        textAlign: 'center'
+      }}
+    >
+      {notice}
+    </div>
+  ) : null;
+
+  const finishModal = showFinishModal ? (
+    <FinishExerciseModal
+      mode={finishMode}
+      exerciseName={currentExercise?.name}
+      onSaveWithTemplate={() => handleExerciseDone('template')}
+      onSaveOnly={() => (finishMode === 'session' ? handleSessionDone('save') : handleExerciseDone('save'))}
+      onDiscard={() => (finishMode === 'session' ? handleSessionDone('discard') : handleExerciseDone('discard'))}
+      onCancel={() => setShowFinishModal(false)}
+    />
+  ) : null;
+
   // Phase: Main Training Dashboard (Not in active session/selector)
   if (!activeSession && !showSelector) {
     return (
       <div className="page-container fade-in">
+        {noticeBanner}
         <header style={{ marginBottom: '30px' }}>
           <h1 className="premium-gradient-text" style={{ fontSize: '32px' }}>Training</h1>
           <p style={{ color: 'var(--text-secondary)' }}>Ready to push your limits?</p>
@@ -384,6 +529,7 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
   if (showSelector) {
     return (
       <div className="page-container fade-in" style={{ height: 'calc(100vh - 40px)', display: 'flex', flexDirection: 'column' }}>
+        {noticeBanner}
         <header style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2 className="premium-gradient-text">Choose Exercise</h2>
@@ -444,15 +590,7 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
           />
         )}
 
-        {showFinishModal && (
-          <FinishExerciseModal 
-            exerciseName={currentExercise?.name}
-            onSaveWithTemplate={() => handleFinishExercise('template')}
-            onSaveOnly={() => handleFinishExercise('save')}
-            onDiscard={() => handleFinishExercise('discard')}
-            onCancel={() => setShowFinishModal(false)}
-          />
-        )}
+        {finishModal}
       </div>
     );
   }
@@ -460,6 +598,7 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
   // Phase: Active Exercise Logging
   return (
     <div className="page-container fade-in">
+      {noticeBanner}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
           <span className="premium-gradient-text" style={{ fontWeight: '700', display: 'block' }}>Active Session</span>
@@ -476,7 +615,7 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
       </div>
       
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
-        <RestTimer startTime={lastActionTime} label="Resting" />
+        <RestTimer startTime={lastActionTime} targetSeconds={plannedRest || 120} label="Rest" />
         <RestTimer startTime={sessionStartTime} label="Session" />
       </div>
 
@@ -485,7 +624,7 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
           <div style={{ flex: '1 1 200px' }}>
             <h2 style={{ fontSize: '24px' }}>{currentExercise?.name}</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-              {currentExercise?.muscles.map(m => m.name).join(', ')}
+              {(currentExercise?.muscles || []).map(m => m.name).join(', ')}
             </p>
           </div>
           <div className="glass" style={{ padding: '8px 12px', fontSize: '12px', fontWeight: '700', color: 'var(--primary-color)', borderRadius: '12px' }}>
@@ -498,7 +637,7 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
             label="Execution Form"
             value={selectedForm}
             onChange={setSelectedForm}
-            options={currentExercise?.forms.map(f => ({ value: f, label: f })) || []}
+            options={(currentExercise?.forms || []).map(f => ({ value: f, label: f }))}
           />
         </div>
 
@@ -608,6 +747,21 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
                           <div style={{ fontSize: '14px' }}>
                             <span style={{ color: 'var(--text-secondary)', marginRight: '10px' }}>Set {exSets.length - i}</span>
                             <strong>{set.weight}kg</strong> × {set.reps} • <span style={{ fontSize: '12px' }}>{set.rir} RIR</span>
+                            {set.isPR && (
+                              <span style={{
+                                marginLeft: '8px',
+                                fontSize: '9px',
+                                fontWeight: '800',
+                                letterSpacing: '0.5px',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                color: '#f59e0b',
+                                border: '1px solid rgba(245, 158, 11, 0.4)',
+                                background: 'rgba(245, 158, 11, 0.1)'
+                              }}>
+                                PR
+                              </span>
+                            )}
                           </div>
                           <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                             {set.form}
@@ -623,15 +777,7 @@ const Training = ({ apiKey, activeSession, setActiveSession }) => {
         </div>
       )}
 
-      {showFinishModal && (
-        <FinishExerciseModal 
-          exerciseName={currentExercise?.name}
-          onSaveWithTemplate={() => handleFinishExercise('template')}
-          onSaveOnly={() => handleFinishExercise('save')}
-          onDiscard={() => handleFinishExercise('discard')}
-          onCancel={() => setShowFinishModal(false)}
-        />
-      )}
+      {finishModal}
     </div>
   );
 };

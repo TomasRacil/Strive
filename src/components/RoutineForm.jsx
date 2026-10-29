@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, Plus, Trash2, Check, Search } from 'lucide-react';
 import { useExercises } from '../hooks/useExercises';
 
@@ -14,7 +14,12 @@ const RoutineForm = ({ onSave, onCancel, initialData }) => {
   );
 
   const addExerciseToRoutine = (ex) => {
-    setSelectedExercises([...selectedExercises, { ...ex, targetSets: 3 }]);
+    setSelectedExercises([...selectedExercises, {
+      ...ex,
+      targetSets: 3,
+      targetReps: 8,
+      restSeconds: 90
+    }]);
     setShowExercisePicker(false);
     setSearchTerm('');
   };
@@ -23,9 +28,9 @@ const RoutineForm = ({ onSave, onCancel, initialData }) => {
     setSelectedExercises(selectedExercises.filter((_, i) => i !== index));
   };
 
-  const updateTargetSets = (index, val) => {
+  const updateTarget = (index, field, val) => {
     const updated = [...selectedExercises];
-    updated[index].targetSets = parseInt(val) || 1;
+    updated[index][field] = parseInt(val, 10) || 1;
     setSelectedExercises(updated);
   };
 
@@ -43,7 +48,10 @@ const RoutineForm = ({ onSave, onCancel, initialData }) => {
       exercises: selectedExercises.map(ex => ({
         id: ex.id,
         name: ex.name,
-        targetSets: ex.targetSets
+        targetSets: ex.targetSets,
+        targetReps: ex.targetReps,
+        restSeconds: ex.restSeconds,
+        weight: ex.template?.weight ?? ex.weight ?? null
       }))
     });
   };
@@ -123,24 +131,44 @@ const RoutineForm = ({ onSave, onCancel, initialData }) => {
             <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px' }}>No exercises added yet.</p>
           ) : (
             selectedExercises.map((ex, i) => (
-              <div key={i} className="glass" style={{ padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: '600', fontSize: '14px' }}>{ex.name}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{ex.muscles?.[0]?.name || 'Exercise'}</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <input 
-                      type="number" 
-                      style={{ width: '45px', padding: '5px', textAlign: 'center', fontSize: '12px' }} 
-                      value={ex.targetSets}
-                      onChange={(e) => updateTargetSets(i, e.target.value)}
-                    />
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Sets</span>
+              <div key={i} className="glass" style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: '600', fontSize: '14px' }}>{ex.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{ex.muscles?.[0]?.name || 'Exercise'}</div>
                   </div>
                   <button style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} onClick={() => removeExerciseFromRoutine(i)}>
                     <Trash2 size={16} />
                   </button>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sets</span>
+                    <input
+                      type="number"
+                      style={{ padding: '8px', textAlign: 'center', fontSize: '13px' }}
+                      value={ex.targetSets}
+                      onChange={(e) => updateTarget(i, 'targetSets', e.target.value)}
+                    />
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Reps</span>
+                    <input
+                      type="number"
+                      style={{ padding: '8px', textAlign: 'center', fontSize: '13px' }}
+                      value={ex.targetReps}
+                      onChange={(e) => updateTarget(i, 'targetReps', e.target.value)}
+                    />
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Rest (s)</span>
+                    <input
+                      type="number"
+                      style={{ padding: '8px', textAlign: 'center', fontSize: '13px' }}
+                      value={ex.restSeconds}
+                      onChange={(e) => updateTarget(i, 'restSeconds', e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
             ))

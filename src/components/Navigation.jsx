@@ -1,4 +1,3 @@
-import React from 'react';
 import { LayoutDashboard, Dumbbell, User, List } from 'lucide-react';
 
 const Navigation = ({ activeTab, setActiveTab }) => {

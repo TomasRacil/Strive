@@ -1,22 +1,28 @@
-import React, { useState } from 'react';
-import { Flame, Trophy, Calendar, Plus, Clock, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { Flame, Trophy, Plus, Clock, ChevronRight } from 'lucide-react';
 import { useHistory } from '../hooks/useHistory';
 import { useExercises } from '../hooks/useExercises';
 import SessionDetailsModal from '../components/SessionDetailsModal';
+import { sessionVolume, volumeByMuscle, sessionsInLastDays } from '../utils/stats';
 
 const Dashboard = ({ setActiveTab }) => {
   const { history, getStreak, deleteSession } = useHistory();
   const { exercises } = useExercises();
   const [selectedSession, setSelectedSession] = useState(null);
   const [showFullHistory, setShowFullHistory] = useState(false);
-  
+
   const streak = getStreak();
   const totalWorkouts = history.length;
 
-  const formatDate = (dateString) => {
-    const options = { month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
+  // Locale-safe: some locales format a date without a space ("10/29"), which
+  // made the old `split(' ')[1].toUpperCase()` throw and blank the dashboard.
+  const formatMonth = (dateString) =>
+    new Date(dateString).toLocaleDateString(undefined, { month: 'short' }).toUpperCase();
+  const formatDay = (dateString) =>
+    new Date(dateString).toLocaleDateString(undefined, { day: 'numeric' });
+
+  const weekVolume = volumeByMuscle(history, exercises, 7).slice(0, 4);
+  const weekSessions = sessionsInLastDays(history, 7);
 
   return (
     <div className="page-container fade-in">
@@ -41,6 +47,36 @@ const Dashboard = ({ setActiveTab }) => {
           </div>
         </div>
       </div>
+
+      {weekVolume.length > 0 && (
+        <div className="glass" style={{ padding: '20px', marginBottom: '25px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '15px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: '700' }}>This Week</h2>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+              {weekSessions} {weekSessions === 1 ? 'session' : 'sessions'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {weekVolume.map(({ muscle, volume }) => {
+              const max = weekVolume[0].volume || 1;
+              return (
+                <div key={muscle} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ width: '85px', fontSize: '12px', color: 'var(--text-secondary)' }}>{muscle}</span>
+                  <div style={{ flex: 1, height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.round((volume / max) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)' }} />
+                  </div>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', width: '62px', textAlign: 'right' }}>
+                    {volume >= 1000 ? `${(volume / 1000).toFixed(1)} t` : `${volume} kg`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <p style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '12px' }}>
+            Volume is split across muscle groups by each exercise's engagement weighting.
+          </p>
+        </div>
+      )}
 
       <h2 style={{ fontSize: '18px', marginBottom: '15px', fontWeight: '700' }}>Quick Actions</h2>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
@@ -107,10 +143,10 @@ const Dashboard = ({ setActiveTab }) => {
                   lineHeight: '1.1'
                 }}>
                   <span style={{ fontSize: '10px', color: 'var(--primary-color)', fontWeight: '800' }}>
-                    {formatDate(session.timestamp).split(' ')[1].toUpperCase()}
+                    {formatMonth(session.timestamp)}
                   </span>
                   <span style={{ fontSize: '16px', fontWeight: '800' }}>
-                    {formatDate(session.timestamp).split(' ')[0]}
+                    {formatDay(session.timestamp)}
                   </span>
                 </div>
                 <div>
@@ -118,11 +154,14 @@ const Dashboard = ({ setActiveTab }) => {
                     {session.sets.length} Sets Completed
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                    {Array.from(new Set(session.sets.map(s => exercises.find(e => e.id === s.exerciseId)?.name)))
+                    {Array.from(new Set(session.sets.map(s => s.exerciseName || exercises.find(e => e.id === s.exerciseId)?.name)))
                       .filter(Boolean)
                       .slice(0, 2)
                       .join(', ')}
                     {new Set(session.sets.map(s => s.exerciseId)).size > 2 ? '...' : ''}
+                    {' · '}
+                    {Math.round(sessionVolume(session.sets)).toLocaleString()} kg
+                    {session.duration ? ` · ${session.duration < 60 ? `${session.duration}s` : `${Math.round(session.duration / 60)} min`}` : ''}
                   </div>
                 </div>
               </div>

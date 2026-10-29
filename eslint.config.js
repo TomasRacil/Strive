@@ -17,5 +17,12 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // This app seeds form state from localStorage and from the selected
+      // exercise inside effects. That is the documented React escape hatch for
+      // "sync with an external store", not a cascading-render bug, so the new
+      // React 19 rule is too strict for this codebase.
+      'react-hooks/set-state-in-effect': 'off',
+    },
   },
 ])

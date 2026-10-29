@@ -1,30 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Navigation from './components/Navigation';
 import Dashboard from './pages/Dashboard';
 import Training from './pages/Training';
 import Profile from './pages/Profile';
 import Exercises from './pages/Exercises';
-import ApiKeyModal from './components/ApiKeyModal';
 import './index.css';
 
-function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [apiKey, setApiKey] = useState(localStorage.getItem('strive_api_key') || '');
-  const [showApiModal, setShowApiModal] = useState(!localStorage.getItem('strive_api_key'));
-  const [activeSession, setActiveSession] = useState(false);
+// If the app was closed mid-workout, come back to it instead of the dashboard.
+const hasActiveSession = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem('strive_active_session') || 'null');
+    return Boolean(saved && ((saved.sets?.length ?? 0) > 0 || saved.sessionStartTime));
+  } catch {
+    return false;
+  }
+};
 
-  const handleSaveApiKey = (key) => {
-    localStorage.setItem('strive_api_key', key);
-    setApiKey(key);
-    setShowApiModal(false);
-  };
+function App() {
+  const [activeTab, setActiveTab] = useState(() => (hasActiveSession() ? 'training' : 'dashboard'));
+  const [activeSession, setActiveSession] = useState(hasActiveSession);
 
   const renderView = () => {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard setActiveTab={setActiveTab} />;
       case 'training':
-        return <Training apiKey={apiKey} activeSession={activeSession} setActiveSession={setActiveSession} />;
+        return <Training activeSession={activeSession} setActiveSession={setActiveSession} />;
       case 'profile':
         return <Profile />;
       case 'exercises':
@@ -40,7 +41,6 @@ function App() {
       {!activeSession && (
         <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
       )}
-      {showApiModal && <ApiKeyModal onSave={handleSaveApiKey} onSkip={() => setShowApiModal(false)} />}
     </div>
   );
 }

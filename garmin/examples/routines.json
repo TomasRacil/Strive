@@ -1,0 +1,14 @@
+{
+  "version": "1.2",
+  "routines": [
+    {
+      "id": "r1",
+      "name": "Push Day A",
+      "exercises": [
+        { "id": "bench_press", "name": "Bench Press", "targetSets": 4, "targetReps": 6, "restSeconds": 150, "weight": 80 },
+        { "id": "overhead_press", "name": "Overhead Press", "targetSets": 3, "targetReps": 8, "restSeconds": 120 },
+        { "id": "weighted_dips", "name": "Weighted Dips", "targetSets": 3, "targetReps": 10, "restSeconds": 90 }
+      ]
+    }
+  ]
+}

@@ -1,34 +1,74 @@
 # Strive - Premium Fitness Training Engine
 
-Strive is a high-performance training application designed for athletes who want intelligent, goal-oriented coaching and precise telemetry.
+Strive is a local-first training app for lifters who want goal-oriented coaching,
+precise telemetry, and a real bridge to their Garmin watch.
 
-## 🚀 Implemented Features
+Runs as a web app, installs as a PWA on Android and iOS (Add to Home Screen),
+and works offline.
 
-### 💎 Core Experience
-- [x] **Responsive Design**: Modern glassmorphism UI. Fluid transitions between mobile (bottom sheets) and desktop layouts.
-- [x] **Interactive Dashboard**: Real-time stats (streak, workouts) and interactive Recent Activity feed.
-- [x] **Library Management**: Custom exercise creation, muscle group categorization, and execution form tracking.
+## Quick start
 
-### 🧠 Strive Intelligence Engine
-- [x] **Goal-Oriented Suggestions**: Dynamic weight/rep logic based on user objectives (Build Muscle, Build Strength, Maintain).
-- [x] **Strength Test (Evolution)**: Progressive "Test My Strength" battery (Big 5) that calibrates the engine using bodyweight-proportional starting points and RIR feedback.
-- [x] **1RM Estimation**: Real-time calculation of estimated one-rep max using the Brzycki formula.
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # production bundle + service worker
+npm test         # unit tests for the engine and stats
+npm run lint
+```
 
-### ⏱️ Session Telemetry
-- [x] **Dual Timers**: Concurrent tracking of individual Set Rest times and total Session Duration.
-- [x] **Live Logging**: Categorized session log that groups sets by exercise and prioritizes recent actions.
-- [x] **Smart Auto-fill**: Historical context-aware inputs for weight and reps.
+## Features
 
-### 💾 Data & Privacy
-- [x] **Local-First**: 100% private. All data stays in your browser's localStorage.
-- [x] **Data Management**: Versioned JSON Export/Import system with migration logic for long-term backup stability.
-- [x] **Metrics Tracking**: Height, Weight, and Birth Date tracking for personalized engine calibration.
+### Core experience
+- **Responsive design** — glassmorphism UI, bottom sheets on mobile, fluid desktop layout.
+- **Interactive dashboard** — streak, total workouts, weekly volume per muscle group, recent activity with tonnage and duration.
+- **Library management** — custom exercises, muscle-group weighting, execution-form tracking.
 
-## 🚧 Partial / In Progress
-- [/] **Advanced Analytics**: Basic stats are implemented on the Dashboard, but detailed progress charts and volume trends are pending.
-- [/] **Routine Management**: Creating and starting routines is implemented, but multi-session routine planning (e.g., PPL split cycles) is still basic.
+### Intelligence engine
+- **Goal-oriented progression** — next load and reps derived from your last performance and RIR (Build Muscle / Build Strength / Maintain).
+- **History-based auto-fill** — inputs seed from what you actually lifted last time for that exercise, falling back to a saved template.
+- **Strength test** — progressive Big-5 battery calibrated from bodyweight and RIR feedback.
+- **1RM estimation** — Brzycki formula, clamped to the range where it is valid.
 
-## 📅 Roadmap
-- [ ] **Volume Tracking**: Weekly volume breakdowns by muscle group.
-- [ ] **Personal Best Alerts**: Celebrations when hitting new 1RMs during sessions.
-- [ ] **Cloud Sync**: Optional cross-device synchronization.
+### Session telemetry
+- **Dual timers** — rest timer counts down to your programmed rest and beeps/vibrates when it is up; session timer runs independently.
+- **PR detection** — every logged set is compared against your best estimated 1RM for that lift, flagged in the log, and announced when you beat it.
+- **Crash-safe sessions** — the in-flight workout is written to disk on every set, so a locked phone or a killed tab resumes where you left off.
+- **Live logging** — session log grouped by exercise, newest first.
+- **Routine targets** — sets, reps and rest per exercise, used both in-session and for Garmin export.
+
+### Progress
+- **Per-exercise trend** — estimated 1RM per session as a sparkline, with change since your first session (Library → chart icon).
+- **Weekly volume per muscle group** — tonnage split by each exercise's engagement weighting.
+
+### Data and privacy
+- **Local-first** — everything lives in `localStorage`. No account, no server.
+- **Versioned export/import** — JSON backup with migration handling.
+
+### Garmin
+- **Push plans** — routines become structured Garmin strength workouts on the watch.
+- **Pull sessions** — watch-recorded sets (weight and reps) import back into history.
+
+See [garmin/README.md](garmin/README.md) for setup and the trade-offs against a
+custom Connect IQ watch app.
+
+## Roadmap
+- [ ] Per-muscle weekly volume targets and deload detection
+- [ ] Optional cloud sync for cross-device history
+- [ ] Connect IQ watch app, if the native strength UI proves too limiting
+
+## Architecture
+
+```
+src/
+  pages/       Dashboard, Training, Exercises, Profile
+  components/  modals, timer, selectors
+  hooks/       useExercises, useHistory, useRoutines (localStorage-backed)
+  utils/       engine.js (progression math), stats.js (streak, volume)
+garmin/
+  convert.py   pure Strive <-> Garmin JSON mapping
+  bridge.py    CLI: login, push workouts, pull activities
+  test_convert.py
+tests/         node:test unit tests
+```
+
+`src/utils/` is intentionally React-free so the logic can be unit tested in Node.
