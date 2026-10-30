@@ -59,9 +59,13 @@ object Strings {
 
         "history.title" to "History",
         "history.empty" to "Nothing recorded yet.",
+        "history.emptyHint" to "Finish a session and it will show up here.",
         "history.delete" to "Delete",
         "history.volume" to "Volume",
         "history.duration" to "Duration",
+        "history.bestSet" to "best set",
+        "history.firstTime" to "first time",
+        "history.same" to "no change",
 
         "hist.sessions" to "Sessions",
         "hist.progress" to "Progress",
@@ -154,9 +158,13 @@ object Strings {
 
         "history.title" to "Historie",
         "history.empty" to "Zatím nic nezapsáno.",
+        "history.emptyHint" to "Dokonči trénink a objeví se tady.",
         "history.delete" to "Smazat",
         "history.volume" to "Objem",
         "history.duration" to "Trvání",
+        "history.bestSet" to "nejlepší série",
+        "history.firstTime" to "poprvé",
+        "history.same" to "bez změny",
 
         "hist.sessions" to "Tréninky",
         "hist.progress" to "Pokrok",
@@ -201,9 +209,16 @@ object Strings {
         return table[key] ?: en[key] ?: key
     }
 
-    /** "1 set" / "3 sets", and the Czech forms, in one place. */
+    /**
+     * "1 set" / "3 sets", and the Czech forms, in one place. Czech needs three
+     * forms: one, two-to-four, and everything else (including zero).
+     */
     fun sets(lang: String, count: Int): String = when (lang) {
-        "cs" -> if (count == 1) "1 série" else "$count série"
+        "cs" -> when {
+            count == 1 -> "1 série"
+            count in 2..4 -> "$count série"
+            else -> "$count sérií"
+        }
         else -> if (count == 1) "1 set" else "$count sets"
     }
 }

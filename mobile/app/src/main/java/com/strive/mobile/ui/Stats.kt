@@ -4,6 +4,7 @@ import com.strive.mobile.data.Exercise
 import com.strive.mobile.data.Progression
 import com.strive.mobile.data.ProgressionEntry
 import com.strive.mobile.data.Session
+import com.strive.mobile.data.SetEntry
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -60,6 +61,94 @@ object Stats {
             .maxOfOrNull { estimate1RM(it.weightKg, it.reps) } ?: 0.0
 
     fun totalVolume(sessions: List<Session>): Double = sessions.sumOf { it.volumeKg }
+
+    /**
+     * The heaviest set of a group; reps break ties, so 100 kg x 5 beats 100 kg x 3.
+     * Null for an empty group, which is the "nothing to compare" signal the
+     * history card turns into a neutral state.
+     */
+    fun bestSetKg(sets: List<SetEntry>): Double? =
+        sets
+            .maxWithOrNull(compareBy<SetEntry> { it.weightKg }.thenBy { it.reps })
+            ?.weightKg
+
+    /**
+     * The lift that carried the session: the one with the most sets, volume
+     * breaking ties. That is the lift the workout was built around, so it is the
+     * one worth comparing session to session.
+     */
+    fun mainLiftId(session: Session): String? =
+        session.sets
+            .groupBy { it.exerciseId }
+            .maxWithOrNull(
+                compareBy<Map.Entry<String, List<SetEntry>>> { it.value.size }
+                    .thenBy { entry -> entry.value.sumOf { set -> set.weightKg * set.reps } }
+            )
+            ?.key
+
+    /** Lift names in the session, the biggest contributor first. */
+    fun topLifts(session: Session, limit: Int = 3): List<String> =
+        session.sets
+            .groupBy { it.exerciseId }
+            .values
+            .sortedWith(
+                compareByDescending<List<SetEntry>> { it.size }
+                    .thenByDescending { sets -> sets.sumOf { set -> set.weightKg * set.reps } }
+            )
+            .take(limit)
+            .map { sets -> sets.first().exerciseName }
+
+    /**
+     * One session's main lift, with how its best set compares to the previous
+     * session that contained the same lift. [deltaKg] is null when there is no
+     * such session (first time this lift was trained, or only one session), so
+     * the UI never divides or compares against nothing.
+     */
+    data class LiftProgress(
+        val exerciseId: String,
+        val exerciseName: String,
+        val sets: Int,
+        val bestKg: Double,
+        val previousBestKg: Double?,
+        /** This lift's best set per session, oldest first, ending with this one. */
+        val history: List<Double>
+    ) {
+        val deltaKg: Double? get() = previousBestKg?.let { bestKg - it }
+    }
+
+    fun liftProgress(
+        session: Session,
+        sessions: List<Session>,
+        historyLimit: Int = 8
+    ): LiftProgress? {
+        val id = mainLiftId(session) ?: return null
+        val sets = session.sets.filter { it.exerciseId == id }
+        val best = bestSetKg(sets) ?: return null
+
+        // Strictly earlier sessions only: two workouts on the same day still
+        // compare, but a session never compares against itself.
+        val earlier = sessions
+            .filter { it.id != session.id && it.startedAt < session.startedAt }
+            .sortedByDescending { it.startedAt }
+
+        val previousBest = earlier
+            .firstOrNull { previous -> previous.sets.any { it.exerciseId == id } }
+            ?.let { previous -> bestSetKg(previous.sets.filter { it.exerciseId == id }) }
+
+        val history = (earlier + session)
+            .sortedBy { it.startedAt }
+            .mapNotNull { entry -> bestSetKg(entry.sets.filter { it.exerciseId == id }) }
+            .takeLast(historyLimit)
+
+        return LiftProgress(
+            exerciseId = id,
+            exerciseName = sets.first().exerciseName,
+            sets = sets.size,
+            bestKg = best,
+            previousBestKg = previousBest,
+            history = history
+        )
+    }
 
     data class Recommendation(
         val exercise: Exercise,
