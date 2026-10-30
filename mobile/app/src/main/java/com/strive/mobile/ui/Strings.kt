@@ -14,6 +14,7 @@ object Strings {
         "nav.settings" to "Settings",
 
         "home.streak" to "Day streak",
+        "home.subtitle" to "Welcome back",
         "home.total" to "Sessions",
         "home.week" to "This week",
         "home.recent" to "Recent activity",
@@ -75,6 +76,7 @@ object Strings {
         "nav.settings" to "Nastavení",
 
         "home.streak" to "Dní v řadě",
+        "home.subtitle" to "Vítej zpět",
         "home.total" to "Tréninků",
         "home.week" to "Tento týden",
         "home.recent" to "Poslední aktivita",
@@ -131,5 +133,11 @@ object Strings {
     fun t(lang: String, key: String): String {
         val table = if (lang == "cs") cs else en
         return table[key] ?: en[key] ?: key
+    }
+
+    /** "1 set" / "3 sets", and the Czech forms, in one place. */
+    fun sets(lang: String, count: Int): String = when (lang) {
+        "cs" -> if (count == 1) "1 série" else "$count série"
+        else -> if (count == 1) "1 set" else "$count sets"
     }
 }

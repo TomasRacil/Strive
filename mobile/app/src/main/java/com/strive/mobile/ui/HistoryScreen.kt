@@ -50,7 +50,7 @@ fun HistoryScreen(state: AppState) {
                     Column(Modifier.weight(1f)) {
                         Text(Format.date(session.startedAt, lang), fontWeight = FontWeight.Bold)
                         Text(
-                            "${session.sets.size} ${t("train.sets")} · " +
+                            "${Strings.sets(lang, session.sets.size)} · " +
                                 "${Format.volume(session.volumeKg, unit)} · " +
                                 Format.duration(session.durationSeconds),
                             fontSize = 12.sp,

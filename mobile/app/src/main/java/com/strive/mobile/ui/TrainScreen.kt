@@ -188,7 +188,7 @@ fun TrainScreen(state: AppState) {
         // ---- sets logged this session ----
         val logged = active.sets.count { it.exerciseId == exercise.id }
         Text(
-            "$logged ${t("train.sets")}",
+            Strings.sets(lang, logged),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 13.sp
         )

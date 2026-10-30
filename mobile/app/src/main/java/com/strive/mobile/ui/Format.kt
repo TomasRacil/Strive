@@ -30,7 +30,9 @@ object Format {
 
     fun date(millis: Long, lang: String): String {
         val locale = if (lang == "cs") Locale.forLanguageTag("cs-CZ") else Locale.US
-        val fmt = DateTimeFormatter.ofPattern("d. MMM", locale)
+        // English puts the month first; Czech puts the day first.
+        val pattern = if (lang == "cs") "d. MMM" else "MMM d"
+        val fmt = DateTimeFormatter.ofPattern(pattern, locale)
         return Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).format(fmt)
     }
 

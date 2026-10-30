@@ -40,7 +40,7 @@ fun HomeScreen(state: AppState, onStartTraining: () -> Unit) {
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Text(t("home.recent"), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(t("home.subtitle"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
@@ -93,7 +93,7 @@ fun HomeScreen(state: AppState, onStartTraining: () -> Unit) {
                     ) {
                         Text(Format.date(session.startedAt, lang), fontWeight = FontWeight.Bold)
                         Text(
-                            "${session.sets.size} ${t("train.sets")} · " +
+                            "${Strings.sets(lang, session.sets.size)} · " +
                                 Format.volume(session.volumeKg, unit),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -1,9 +1,11 @@
 package com.strive.mobile.ui
 
 import android.Manifest
+import android.app.Activity
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,12 +25,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import com.strive.mobile.watch.WatchRepository
 
 @Composable
@@ -36,6 +41,22 @@ fun StriveApp(state: AppState, watch: WatchRepository) {
     var tab by rememberSaveable { mutableStateOf("home") }
     val lang = state.settings.lang
     fun t(key: String) = Strings.t(lang, key)
+
+    // Status bar icons have to contrast with what Compose actually draws, not
+    // with the launch theme. Without this the clock is white on a light screen.
+    val view = LocalView.current
+    val dark = when (state.settings.theme) {
+        "dark" -> true
+        "light" -> false
+        else -> isSystemInDarkTheme()
+    }
+    SideEffect {
+        val window = (view.context as? Activity)?.window ?: return@SideEffect
+        WindowCompat.getInsetsController(window, view).apply {
+            isAppearanceLightStatusBars = !dark
+            isAppearanceLightNavigationBars = !dark
+        }
+    }
 
     // Bluetooth permissions are runtime grants from Android 12 onwards.
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -84,7 +105,7 @@ fun StriveApp(state: AppState, watch: WatchRepository) {
                 title = { Text(t("train.summary")) },
                 text = {
                     Text(
-                        "${finished.sets.size} ${t("train.sets")} · " +
+                        "${Strings.sets(lang, finished.sets.size)} · " +
                             Format.volume(finished.volumeKg, state.settings.unit)
                     )
                 },
