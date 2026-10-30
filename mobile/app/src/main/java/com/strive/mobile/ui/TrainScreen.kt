@@ -46,7 +46,7 @@ fun TrainScreen(state: AppState) {
     // Re-seed the inputs whenever the lift or the unit changes, so the stepper
     // starts from the suggested load rather than a stale number.
     LaunchedEffect(exerciseIndex, unit) {
-        val ex = state.exercises[exerciseIndex]
+        val ex = state.exercises.getOrNull(exerciseIndex) ?: return@LaunchedEffect
         weightDisplay = Format.toDisplay(state.suggestedWeight(ex.id), unit)
         reps = ex.targetReps
     }
@@ -58,7 +58,18 @@ fun TrainScreen(state: AppState) {
         }
     }
 
-    val exercise = state.exercises[exerciseIndex]
+    val exercise = state.exercises.getOrNull(exerciseIndex)
+
+    // Deleting the last lift (or editing the list mid-session) must not crash.
+    if (exercise == null) {
+        Column(Modifier.fillMaxSize().padding(20.dp)) {
+            Text(t("train.title"), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
+            Spacer(Modifier.height(14.dp))
+            Text(Strings.t(lang, "ex.empty"), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
+
     val active = state.active
 
     Column(

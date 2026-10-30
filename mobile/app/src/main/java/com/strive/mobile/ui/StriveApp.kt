@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.PlayArrow
@@ -79,7 +80,8 @@ fun StriveApp(state: AppState, watch: WatchRepository) {
                 NavigationBar {
                     NavItem("home", tab, t("nav.home"), Icons.Filled.Home) { tab = it }
                     NavItem("train", tab, t("nav.train"), Icons.Filled.PlayArrow) { tab = it }
-                    NavItem("history", tab, t("nav.history"), Icons.Filled.List) { tab = it }
+                    NavItem("exercises", tab, t("nav.exercises"), Icons.Filled.List) { tab = it }
+                    NavItem("history", tab, t("nav.history"), Icons.Filled.DateRange) { tab = it }
                     NavItem("settings", tab, t("nav.settings"), Icons.Filled.Settings) { tab = it }
                 }
             }
@@ -92,6 +94,7 @@ fun StriveApp(state: AppState, watch: WatchRepository) {
                 when (tab) {
                     "home" -> HomeScreen(state) { tab = "train" }
                     "train" -> TrainScreen(state)
+                    "exercises" -> ExercisesScreen(state)
                     "history" -> HistoryScreen(state)
                     else -> SettingsScreen(state, watch)
                 }

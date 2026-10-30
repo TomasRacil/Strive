@@ -37,6 +37,41 @@ class StriveStore(context: Context) {
         prefs.edit().putString(KEY_SETTINGS, o.toString()).apply()
     }
 
+    // --------------------------------------------------------------- exercises
+
+    /** Null means "never saved", so the caller can seed the library once. */
+    fun loadExercises(): List<Exercise>? {
+        val raw = prefs.getString(KEY_EXERCISES, null) ?: return null
+        return runCatching {
+            val arr = JSONArray(raw)
+            (0 until arr.length()).map { i ->
+                val o = arr.getJSONObject(i)
+                Exercise(
+                    id = o.optString("id"),
+                    name = o.optString("name"),
+                    muscle = o.optString("muscle"),
+                    targetReps = o.optInt("targetReps", 8),
+                    restSeconds = o.optInt("restSeconds", 120)
+                )
+            }
+        }.getOrNull()
+    }
+
+    fun saveExercises(exercises: List<Exercise>) {
+        val arr = JSONArray()
+        exercises.forEach { e ->
+            arr.put(
+                JSONObject()
+                    .put("id", e.id)
+                    .put("name", e.name)
+                    .put("muscle", e.muscle)
+                    .put("targetReps", e.targetReps)
+                    .put("restSeconds", e.restSeconds)
+            )
+        }
+        prefs.edit().putString(KEY_EXERCISES, arr.toString()).apply()
+    }
+
     // ---------------------------------------------------------------- sessions
 
     fun loadSessions(): List<Session> {
@@ -127,5 +162,6 @@ class StriveStore(context: Context) {
         const val KEY_SETTINGS = "settings"
         const val KEY_SESSIONS = "sessions"
         const val KEY_PROGRESSION = "progression"
+        const val KEY_EXERCISES = "exercises"
     }
 }

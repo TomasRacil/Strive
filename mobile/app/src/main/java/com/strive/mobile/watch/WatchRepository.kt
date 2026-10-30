@@ -116,6 +116,22 @@ class WatchRepository(private val context: Context) {
         }.getOrNull() ?: return
 
         runCatching {
+            ciq.registerForAppEvents(device, app, object : ConnectIQ.IQApplicationEventListener {
+                override fun onMessageReceived(
+                    from: IQDevice,
+                    app: IQApp,
+                    messages: List<Any>,
+                    messageStatus: ConnectIQ.IQMessageStatus
+                ) {
+                    Log.d(TAG, "message FROM WATCH: $messages ($messageStatus)")
+                    lastReceived = messages.map { it.toString() }
+                }
+            })
+        }.onFailure {
+            Log.e(TAG, "could not register for app events", it)
+        }
+
+        runCatching {
             ciq.getApplicationInfo(
                 STRIVE_APP_ID,
                 device,

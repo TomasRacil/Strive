@@ -47,7 +47,34 @@ class AppState(context: Context) {
     var lastFinished by mutableStateOf<Session?>(null)
         private set
 
-    val exercises: List<Exercise> = Seed.exercises
+    // Seeded once from the built-in library, then owned by the user: adding,
+    // editing or deleting a lift persists the whole list.
+    var exercises by mutableStateOf(
+        store.loadExercises() ?: Seed.exercises.also { store.saveExercises(it) }
+    )
+        private set
+
+    fun addExercise(name: String, muscle: String, targetReps: Int, restSeconds: Int) {
+        val exercise = Exercise(
+            id = UUID.randomUUID().toString(),
+            name = name,
+            muscle = muscle,
+            targetReps = targetReps,
+            restSeconds = restSeconds
+        )
+        exercises = exercises + exercise
+        store.saveExercises(exercises)
+    }
+
+    fun updateExercise(updated: Exercise) {
+        exercises = exercises.map { if (it.id == updated.id) updated else it }
+        store.saveExercises(exercises)
+    }
+
+    fun deleteExercise(id: String) {
+        exercises = exercises.filterNot { it.id == id }
+        store.saveExercises(exercises)
+    }
 
     fun updateSettings(next: Settings) {
         settings = next

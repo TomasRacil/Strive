@@ -19,6 +19,13 @@ class StriveApp extends App.AppBase {
 
     function onStart(state) {
         Comm.registerForPhoneAppMessages(method(:onPhoneAppMessage));
+        // Proves the channel in the other direction: if the phone logs this, the
+        // watch can reach it and only sendMessage is at fault.
+        sendToPhone("hello-from-watch");
+    }
+
+    function sendToPhone(text) {
+        Comm.transmit(text, null, new PhoneListener());
     }
 
     // The phone sends a delimited string of exercise id -> weight. A Dictionary
@@ -49,5 +56,22 @@ class StriveApp extends App.AppBase {
             view.reloadFromPlan();
             Ui.requestUpdate();
         }
+    }
+}
+
+// transmit() needs a real listener class; Monkey C has no anonymous objects.
+class PhoneListener extends Comm.ConnectionListener {
+
+    function initialize() {
+        ConnectionListener.initialize();
+    }
+
+    function onComplete() as Void {
+    }
+
+    function onError() as Void {
+    }
+
+    function onResponse(responseCode as Lang.Number, data) as Void {
     }
 }
