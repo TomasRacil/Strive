@@ -83,7 +83,8 @@ class WatchRepository(private val context: Context) {
         val ciq = connectIQ ?: return
         runCatching {
             val known = ciq.knownDevices
-            devices = known.map { it.toWatchDevice() }
+            val previous = devices.associateBy { it.id }
+            devices = known.map { it.toWatchDevice(previous[it.deviceIdentifier]) }
 
             // Subscribe to connection changes so the card flips to Connected on
             // its own instead of lying until the next refresh.
@@ -168,10 +169,21 @@ class WatchRepository(private val context: Context) {
         }
     }
 
-    private fun IQDevice.toWatchDevice() = WatchDevice(
+    /**
+     * IQDevice carries a snapshot of the status, and that snapshot is frequently
+     * UNKNOWN even while the device is connected. Only a definitive answer from
+     * the snapshot is trusted; otherwise whatever the event listener last told
+     * us wins, so refreshing does not flip a connected watch to "not connected".
+     */
+    private fun IQDevice.toWatchDevice(previous: WatchDevice?) = WatchDevice(
         id = deviceIdentifier,
-        name = friendlyName ?: "Garmin watch",
-        connected = status == IQDevice.IQDeviceStatus.CONNECTED
+        name = friendlyName ?: previous?.name ?: "Garmin watch",
+        connected = when (status) {
+            IQDevice.IQDeviceStatus.CONNECTED -> true
+            IQDevice.IQDeviceStatus.NOT_CONNECTED,
+            IQDevice.IQDeviceStatus.NOT_PAIRED -> false
+            else -> previous?.connected ?: false
+        }
     )
 
     /**
