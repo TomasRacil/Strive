@@ -15,6 +15,9 @@ import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
 import android.bluetooth.le.BluetoothLeAdvertiser
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -52,6 +55,7 @@ class BleSyncServer private constructor(private val context: Context) {
     private var server: BluetoothGattServer? = null
     private var advertiser: BluetoothLeAdvertiser? = null
     private var advertiseCallback: AdvertiseCallback? = null
+    private var scanCallback: ScanCallback? = null
 
     /** UTF-8 JSON served on PLAN. Replaced later by the real plan payload. */
     private var planValue: String = DEFAULT_PLAN
@@ -62,9 +66,13 @@ class BleSyncServer private constructor(private val context: Context) {
     // ---- lifecycle -------------------------------------------------------
 
     fun start() {
-        if (server != null || isAdvertising) {
-            Log.d(TAG, "start() ignored: already running")
-            return
+        // Android closes a GATT server when the app goes to the background
+        // (REASON_UNREGISTER_SERVER) while these fields still claim it is
+        // running, which used to make Start a silent no-op. Tear down whatever
+        // stale state exists and rebuild.
+        if (server != null || isAdvertising || advertiser != null) {
+            Log.d(TAG, "start(): clearing stale state before restart")
+            runCatching { stop() }
         }
 
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
@@ -116,6 +124,7 @@ class BleSyncServer private constructor(private val context: Context) {
         server = gattServer
 
         startAdvertising(adapter)
+        startSelfScan(adapter)
     }
 
     fun stop() {
@@ -123,6 +132,11 @@ class BleSyncServer private constructor(private val context: Context) {
         runCatching { advertiser?.stopAdvertising(advertiseCallback) }
         advertiseCallback = null
         isAdvertising = false
+
+        val scanner = (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)
+            ?.adapter?.bluetoothLeScanner
+        runCatching { scanCallback?.let { scanner?.stopScan(it) } }
+        scanCallback = null
 
         runCatching { server?.clearServices() }
         runCatching { server?.close() }
@@ -147,6 +161,69 @@ class BleSyncServer private constructor(private val context: Context) {
     }
 
     // ---- advertising -----------------------------------------------------
+
+    /**
+     * Scans for our own advertisement so we can see what we are actually
+     * broadcasting. A watch that reports "sees nothing" is indistinguishable
+     * from an advertisement that never carried the service UUID, and this is
+     * the only way to tell those apart without guessing.
+     */
+    private fun startSelfScan(adapter: BluetoothAdapter) {
+        val scanner = adapter.bluetoothLeScanner
+        if (scanner == null) {
+            Log.e(SELF_TAG, "no BluetoothLeScanner available")
+            return
+        }
+
+        var seen = 0
+        val callback = object : ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: ScanResult) {
+                val record = result.scanRecord ?: return
+                seen += 1
+
+                val uuids = record.serviceUuids
+                val hasOurs = uuids?.any { it.uuid == SERVICE_UUID } == true
+                val name = record.deviceName ?: ""
+                // Only our own advert (or one naming Strive) is interesting.
+                if (!hasOurs && !name.contains("Strive", ignoreCase = true)) {
+                    return
+                }
+
+                val uuidText = uuids?.joinToString(",") { it.uuid.toString() } ?: "none"
+                val mfgText = record.manufacturerSpecificData?.let { data ->
+                    (0 until data.size()).joinToString(",") { i ->
+                        "%04X=%s".format(
+                            data.keyAt(i),
+                            data.valueAt(i).joinToString("") { "%02X".format(it) }
+                        )
+                    }
+                } ?: "none"
+                val rawText = record.bytes?.joinToString("") { "%02X".format(it) } ?: "none"
+
+                Log.i(SELF_TAG, "addr=${result.device.address} name=$name rssi=${result.rssi} " +
+                    "uuids=[$uuidText] mfg=[$mfgText] raw=$rawText")
+                Log.i(SELF_TAG, "SELF_SCAN service_uuid_present=$hasOurs")
+            }
+
+            override fun onScanFailed(errorCode: Int) {
+                Log.e(SELF_TAG, "self-scan failed errorCode=$errorCode")
+            }
+        }
+
+        scanCallback = callback
+        runCatching {
+            scanner.startScan(
+                null,
+                ScanSettings.Builder()
+                    .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                    .build(),
+                callback
+            )
+            Log.d(SELF_TAG, "self-scan started; results=$seen")
+        }.onFailure {
+            Log.e(SELF_TAG, "self-scan start failed: ${it.message}")
+        }
+    }
 
     private fun startAdvertising(adapter: BluetoothAdapter) {
         val leAdvertiser = adapter.bluetoothLeAdvertiser
@@ -417,6 +494,9 @@ class BleSyncServer private constructor(private val context: Context) {
 
     companion object {
         private const val TAG = "BleSyncServer"
+
+        /** Separate tag so the advertisement payload is easy to grep on its own. */
+        private const val SELF_TAG = "BleSelfScan"
 
         /** Must match garmin/watch/source/BleClient.mc character for character. */
         val SERVICE_UUID: UUID = UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
