@@ -29,16 +29,29 @@ class StriveApp extends App.AppBase {
     // broken (CIQQA-4631), but a plain HTTPS request goes through a different
     // Garmin service. A status code here means the watch can reach a server and
     // we have a working channel that does not depend on that bus.
+    // Two hosts are probed because a 4xx from one says nothing about the other.
     function probeNetwork() {
+        request("https://httpbin.org/status/200", :onProbeA);
+        request("https://postman-echo.com/status/200", :onProbeB);
+    }
+
+    function request(url, callback) {
         var options = {
             :method => Comm.HTTP_REQUEST_METHOD_GET,
             :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_TEXT_PLAIN
         };
-        Comm.makeWebRequest("https://httpbin.org/status/200", null, options, method(:onProbe));
+        Comm.makeWebRequest(url, null, options, method(callback));
     }
 
-    function onProbe(responseCode as Lang.Number, data as Lang.String or Null) as Void {
-        App.Storage.setValue("net_probe", responseCode);
+    function onProbeA(responseCode as Lang.Number, data as Lang.String or Null) as Void {
+        App.Storage.setValue("net_a", responseCode);
+        if (view != null) {
+            Ui.requestUpdate();
+        }
+    }
+
+    function onProbeB(responseCode as Lang.Number, data as Lang.String or Null) as Void {
+        App.Storage.setValue("net_b", responseCode);
         if (view != null) {
             Ui.requestUpdate();
         }

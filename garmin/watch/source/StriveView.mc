@@ -211,14 +211,15 @@ class StriveView extends Ui.View {
             received = 0;
         }
         dc.drawText(width / 2, height * 0.88, Gfx.FONT_XTINY,
-            "rx " + received.toString() + "  net " + netProbeText(), Gfx.TEXT_JUSTIFY_CENTER);
+            "rx " + received.toString() + " a" + probeText("net_a") + " b" + probeText("net_b") + " p2",
+            Gfx.TEXT_JUSTIFY_CENTER);
     }
 
-    // Result of the HTTPS probe: an HTTP status code means the watch can reach a
+    // Result of an HTTPS probe: an HTTP status code means the watch can reach a
     // server, which is a data channel that does not use the broken Garmin
-    // companion message bus. "-" means the request has not answered yet.
-    function netProbeText() as Lang.String {
-        var code = App.Storage.getValue("net_probe");
+    // companion message bus. "-" means that request has not answered yet.
+    function probeText(key) as Lang.String {
+        var code = App.Storage.getValue(key);
         if (code == null) {
             return "-";
         }
