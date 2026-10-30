@@ -203,10 +203,12 @@ class StriveView extends Ui.View {
         dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
         dc.drawText(width / 2, height * 0.80, Gfx.FONT_XTINY, "swipe: change lift", Gfx.TEXT_JUSTIFY_CENTER);
 
-        // Receipt counter: proves whether a phone message ever reached the app.
+        // Receipt counter, always drawn so its presence also proves which build
+        // is installed. It stays 0 until a phone message actually arrives.
         var received = App.Storage.getValue("msg_count");
-        if (received != null && received > 0) {
-            dc.drawText(width / 2, height * 0.88, Gfx.FONT_XTINY, "rx " + received.toString(), Gfx.TEXT_JUSTIFY_CENTER);
+        if (received == null) {
+            received = 0;
         }
+        dc.drawText(width / 2, height * 0.88, Gfx.FONT_XTINY, "rx " + received.toString(), Gfx.TEXT_JUSTIFY_CENTER);
     }
 }
