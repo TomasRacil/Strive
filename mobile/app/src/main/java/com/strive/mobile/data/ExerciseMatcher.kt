@@ -14,9 +14,9 @@ object ExerciseMatcher {
 
     private val noise = setOf(
         "barbell", "dumbbell", "dumbbells", "cable", "machine", "ez", "bar", "ezbar",
-        "standing", "seated", "weighted", "incline", "decline", "close", "grip", "wide",
-        "single", "arm", "alternating", "assisted", "smith", "back", "reverse", "flat",
-        "hammer", "preacher", "sumo", "romanian", "trap"
+        "standing", "seated", "weighted", "assisted", "smith", "back", "flat", "trap"
+        // Deliberately NOT stripped: incline, decline, close, wide, reverse.
+        // They name a different lift ("incline bench press" is not "bench press").
     )
 
     /** Lowercase, drop equipment and position words, then de-pluralise. */
@@ -85,6 +85,26 @@ object ExerciseMatcher {
         fun has(vararg keys: String) = keys.any { n.contains(it) }
 
         return when {
+            has("incline") && has("press") ->
+                new(name, "Chest",
+                    primary = mapOf("pectoralis_major" to 1.0),
+                    secondary = mapOf("anterior_deltoid" to 0.7, "triceps_lateral" to 0.5))
+
+            has("decline") && has("press") ->
+                new(name, "Chest",
+                    primary = mapOf("pectoralis_major" to 1.0),
+                    secondary = mapOf("triceps_lateral" to 0.6, "anterior_deltoid" to 0.3))
+
+            has("close grip") && has("press") ->
+                new(name, "Arms",
+                    primary = mapOf("triceps_lateral" to 1.0, "triceps_long" to 0.8),
+                    secondary = mapOf("pectoralis_major" to 0.5, "anterior_deltoid" to 0.4))
+
+            has("reverse fly", "rear delt", "reverse pec") ->
+                new(name, "Shoulders",
+                    primary = mapOf("posterior_deltoid" to 1.0),
+                    secondary = mapOf("rhomboids" to 0.7, "trapezius_mid" to 0.5))
+
             has("pressdown", "skull crusher", "triceps extension", "overhead extension") ->
                 new(name, "Arms",
                     primary = mapOf("triceps_lateral" to 1.0, "triceps_long" to 0.8),

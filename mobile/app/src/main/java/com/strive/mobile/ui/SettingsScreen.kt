@@ -163,13 +163,17 @@ private fun GarminImportCard(state: AppState, t: (String) -> String) {
 
             val result = GarminImport.parse(text, state.exercises)
             state.addExercises(result.newExercises)
-            val added = state.importSessions(result.sessions)
+            val (added, updated) = state.importSessions(result.sessions)
 
             buildString {
                 append(
-                    if (added == 0) "Nothing new — those sessions are already in your history."
-                    else "Imported $added session(s) from Garmin."
+                    when {
+                        added > 0 -> "Imported $added session(s) from Garmin."
+                        updated > 0 -> "Refreshed $updated session(s) already in your history."
+                        else -> "Nothing new — those sessions are already in your history."
+                    }
                 )
+                if (added > 0 && updated > 0) append(" Refreshed $updated existing.")
                 if (result.newExercises.isNotEmpty()) {
                     append(" Added ${result.newExercises.size} new lift(s) with inferred muscles.")
                 }

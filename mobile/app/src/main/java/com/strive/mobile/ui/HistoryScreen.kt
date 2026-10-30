@@ -8,7 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import com.strive.mobile.data.Session
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -65,8 +70,14 @@ fun HistoryScreen(state: AppState) {
             Text(t("history.empty"), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
+        var openSession by remember { mutableStateOf<Session?>(null) }
+
         state.sessions.forEach { session ->
-            Card(Modifier.fillMaxWidth()) {
+            Card(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { openSession = session }
+            ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -86,6 +97,52 @@ fun HistoryScreen(state: AppState) {
                     }
                 }
             }
+        }
+
+        // Tapping a session shows what was actually lifted, grouped by exercise.
+        openSession?.let { session ->
+            AlertDialog(
+                onDismissRequest = { openSession = null },
+                confirmButton = {
+                    TextButton(onClick = { openSession = null }) {
+                        Text(if (lang == "cs") "Zavřít" else "Close")
+                    }
+                },
+                title = { Text(Format.date(session.startedAt, lang)) },
+                text = {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        Text(
+                            "${Strings.sets(lang, session.sets.size)} · " +
+                                "${Format.volume(session.volumeKg, unit)} · " +
+                                Format.duration(session.durationSeconds),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        session.sets
+                            .groupBy { it.exerciseId }
+                            .forEach { (_, sets) ->
+                                Text(
+                                    sets.first().exerciseName,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
+                                )
+                                sets.forEachIndexed { index, entry ->
+                                    val timing =
+                                        if (entry.durationSeconds > 0) "   ${entry.durationSeconds}s" else ""
+                                    Text(
+                                        "${index + 1}.  ${Format.weight(entry.weightKg, unit)} × ${entry.reps}$timing",
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            }
+                    }
+                }
+            )
         }
     }
 }

@@ -99,6 +99,16 @@ class GarminImportTest {
     }
 
     @Test
+    fun doesNotMergeInclinePressIntoFlatBench() {
+        // "Incline bench press" is a different lift: it must not collapse into
+        // Bench Press, and it must still land on the chest.
+        assertNull(ExerciseMatcher.match("Incline Dumbbell Bench Press", library))
+        val inferred = ExerciseMatcher.infer("Incline Dumbbell Bench Press")
+        assertNotNull(inferred)
+        assertEquals("Chest", inferred!!.muscle)
+    }
+
+    @Test
     fun keepsPressIntactWhenNormalising() {
         // "press" must not be de-pluralised to "pres".
         assertEquals("bench press", ExerciseMatcher.normalize("Barbell Bench Press"))

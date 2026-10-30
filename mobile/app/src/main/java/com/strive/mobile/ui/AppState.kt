@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.strive.mobile.data.Exercise
+import com.strive.mobile.data.ExerciseMatcher
 import com.strive.mobile.data.Progression
 import com.strive.mobile.data.ProgressionEntry
 import com.strive.mobile.data.Seed
@@ -140,6 +141,51 @@ class AppState(context: Context) {
     fun updateSettings(next: Settings) {
         settings = next
         store.saveSettings(next)
+    }
+
+    /**
+     * Sessions imported before name matching existed kept Garmin's own exercise
+     * names, so their ids matched no library lift and every statistic skipped
+     * them. Re-map by name now; idempotent, so it is safe to run at startup.
+     */
+    fun repairImportedSessions() {
+        val working = exercises.toMutableList()
+        val created = mutableListOf<Exercise>()
+        var changed = 0
+
+        val repaired = sessions.map { session ->
+            val sets = session.sets.map { entry ->
+                val target = ExerciseMatcher.match(entry.exerciseName, working)
+                    ?: ExerciseMatcher.infer(entry.exerciseName)?.let { candidate ->
+                        working.firstOrNull { it.id == candidate.id }
+                            ?: candidate.also { working.add(it); created.add(it) }
+                    }
+
+                if (target != null &&
+                    (target.id != entry.exerciseId || target.name != entry.exerciseName)
+                ) {
+                    changed += 1
+                    entry.copy(exerciseId = target.id, exerciseName = target.name)
+                } else {
+                    entry
+                }
+            }
+            if (sets == session.sets) session else session.copy(sets = sets)
+        }
+
+        if (created.isNotEmpty()) {
+            exercises = exercises + created
+            store.saveExercises(exercises)
+        }
+        if (changed > 0) {
+            sessions = repaired
+            store.saveSessions(sessions)
+        }
+    }
+
+    init {
+        // Fix up history imported before matching existed.
+        repairImportedSessions()
     }
 
     fun startSession(plannedIds: List<String> = emptyList(), routineName: String? = null) {
@@ -285,17 +331,39 @@ class AppState(context: Context) {
      * Duplicates are dropped by id, so importing the same file twice is a no-op.
      * Returns how many were actually added.
      */
-    fun importSessions(incoming: List<Session>): Int {
-        if (incoming.isEmpty()) return 0
+    /**
+     * Adds new sessions and refreshes known ones. Refreshing matters because an
+     * older import may have stored exercise names before matching existed;
+     * re-importing the same file now repairs them instead of being ignored.
+     */
+    fun importSessions(incoming: List<Session>): Pair<Int, Int> {
+        if (incoming.isEmpty()) return 0 to 0
 
-        val known = sessions.map { it.id }.toSet()
-        val fresh = incoming.filter { it.id.isNotBlank() && it.id !in known && it.sets.isNotEmpty() }
-        if (fresh.isEmpty()) return 0
+        val merged = sessions.toMutableList()
+        var added = 0
+        var updated = 0
 
-        val all = (fresh + sessions).sortedByDescending { it.startedAt }
-        sessions = all
-        store.saveSessions(all)
-        return fresh.size
+        incoming
+            .filter { it.id.isNotBlank() && it.sets.isNotEmpty() }
+            .forEach { session ->
+                val index = merged.indexOfFirst { it.id == session.id }
+                when {
+                    index < 0 -> {
+                        merged.add(session)
+                        added += 1
+                    }
+                    merged[index] != session -> {
+                        merged[index] = session
+                        updated += 1
+                    }
+                }
+            }
+
+        if (added == 0 && updated == 0) return 0 to 0
+
+        sessions = merged.sortedByDescending { it.startedAt }
+        store.saveSessions(sessions)
+        return added to updated
     }
 
     fun dismissSummary() {
