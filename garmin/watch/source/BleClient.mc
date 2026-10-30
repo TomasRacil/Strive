@@ -104,8 +104,14 @@ class BleClient extends Ble.BleDelegate {
 
     function beginScan() {
         scanning = true;
-        setStatus("scan");
-        Ble.setScanState(Ble.SCAN_STATE_SCANNING);
+        // A silent failure here would look exactly like "sees nothing", so the
+        // exception text is surfaced instead of swallowed.
+        try {
+            Ble.setScanState(Ble.SCAN_STATE_SCANNING);
+            setStatus("scan");
+        } catch (e) {
+            setStatus("scan err " + e.getErrorMessage());
+        }
     }
 
     function stopScan() {
