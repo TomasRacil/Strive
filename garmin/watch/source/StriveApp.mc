@@ -6,14 +6,19 @@ using Toybox.Lang;
 class StriveApp extends App.AppBase {
 
     var view;
+    var ble;
 
     function initialize() {
         AppBase.initialize();
         view = null;
+        ble = null;
     }
 
     function getInitialView() {
         view = new StriveView();
+        // The BLE client needs the view so it can trigger a redraw when a
+        // connection or a read lands while the screen is idle.
+        ble = new BleClient(view);
         return [ view, new StriveDelegate(view) ];
     }
 
@@ -23,6 +28,10 @@ class StriveApp extends App.AppBase {
         // watch can reach it and only sendMessage is at fault.
         sendToPhone("hello-from-watch");
         probeNetwork();
+        // The real transport: central-role BLE straight to the phone app.
+        if (ble != null) {
+            ble.start();
+        }
     }
 
     // Decisive experiment for sync. Garmin Connect's companion message bus is

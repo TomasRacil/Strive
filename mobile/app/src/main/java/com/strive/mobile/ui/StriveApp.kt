@@ -68,7 +68,9 @@ fun StriveApp(state: AppState, watch: WatchRepository) {
             permissionLauncher.launch(
                 arrayOf(
                     Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.BLUETOOTH_CONNECT
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    // Needed by the GATT server + advertiser (BleSyncServer).
+                    Manifest.permission.BLUETOOTH_ADVERTISE
                 )
             )
         }

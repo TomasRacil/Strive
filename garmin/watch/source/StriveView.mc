@@ -185,6 +185,8 @@ class StriveView extends Ui.View {
 
             dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
             dc.drawText(width / 2, height * 0.80, Gfx.FONT_XTINY, "start: skip rest", Gfx.TEXT_JUSTIFY_CENTER);
+
+            drawBleLine(dc, width, height);
             return;
         }
 
@@ -204,6 +206,8 @@ class StriveView extends Ui.View {
         dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
         dc.drawText(width / 2, height * 0.80, Gfx.FONT_XTINY, "swipe: change lift", Gfx.TEXT_JUSTIFY_CENTER);
 
+        drawBleLine(dc, width, height);
+
         // Receipt counter, always drawn so its presence also proves which build
         // is installed. It stays 0 until a phone message actually arrives.
         var received = App.Storage.getValue("msg_count");
@@ -213,6 +217,23 @@ class StriveView extends Ui.View {
         dc.drawText(width / 2, height * 0.88, Gfx.FONT_XTINY,
             "rx " + received.toString() + " a" + probeText("net_a") + " b" + probeText("net_b") + " p2",
             Gfx.TEXT_JUSTIFY_CENTER);
+    }
+
+    // Direct BLE to the phone app, drawn on its own line above the probe line.
+    // The string is written by BleClient: scan, found, conn, svc, rd ok, wr ok,
+    // or an err/… variant. "-" means the client has not started yet.
+    function drawBleLine(dc, width, height) {
+        dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(width / 2, height * 0.845, Gfx.FONT_XTINY, "ble " + bleText(),
+            Gfx.TEXT_JUSTIFY_CENTER);
+    }
+
+    function bleText() as Lang.String {
+        var text = App.Storage.getValue("ble_status");
+        if (text == null) {
+            return "-";
+        }
+        return text.toString();
     }
 
     // Result of an HTTPS probe: an HTTP status code means the watch can reach a
