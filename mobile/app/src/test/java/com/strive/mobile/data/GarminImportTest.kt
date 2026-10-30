@@ -13,7 +13,10 @@ class GarminImportTest {
 
     private val library = listOf(
         Exercise("bench_press", "Bench Press", "Chest", 8, 150),
-        Exercise("squats", "Squats", "Legs", 6, 180)
+        Exercise("squats", "Squats", "Legs", 6, 180),
+        Exercise("overhead_press", "Overhead Press", "Shoulders", 8, 120),
+        Exercise("pull_ups", "Pull-ups", "Back", 8, 120),
+        Exercise("bicep_curls", "Curls", "Arms", 10, 90)
     )
 
     private val sample = """
@@ -91,6 +94,15 @@ class GarminImportTest {
         assertEquals("squats", ExerciseMatcher.match("Barbell Back Squat", library)?.id)
         assertEquals("bench_press", ExerciseMatcher.match("Barbell Bench Press", library)?.id)
         assertEquals("overhead_press", ExerciseMatcher.match("Military Press", library)?.id)
+        assertEquals("pull_ups", ExerciseMatcher.match("Pull Up", library)?.id)
+        assertEquals("bicep_curls", ExerciseMatcher.match("Standing Ez Bar Biceps Curl", library)?.id)
+    }
+
+    @Test
+    fun keepsPressIntactWhenNormalising() {
+        // "press" must not be de-pluralised to "pres".
+        assertEquals("bench press", ExerciseMatcher.normalize("Barbell Bench Press"))
+        assertEquals("squat", ExerciseMatcher.normalize("Barbell Back Squats"))
     }
 
     @Test
