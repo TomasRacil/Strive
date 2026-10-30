@@ -42,6 +42,10 @@ class WatchRepository(private val context: Context) {
     var lastReceived by mutableStateOf<List<String>>(emptyList())
         private set
 
+    /** "installed" / "not_installed" / "unknown" — reported by the watch itself. */
+    var appStatus by mutableStateOf<String?>(null)
+        private set
+
     fun initialize() {
         if (connectIQ != null) return
         Log.d(TAG, "initialize()")
@@ -100,6 +104,34 @@ class WatchRepository(private val context: Context) {
             }
         }.onFailure {
             status = "Could not list watches: ${it.message}"
+        }
+
+        // Ask the watch whether our Connect IQ app is actually on it. Sending to
+        // a watch without the app produces no callback at all, so this is the
+        // difference between "broken" and "nothing to deliver to".
+        val first = devices.firstOrNull() ?: return
+        val device = runCatching {
+            ciq.knownDevices.firstOrNull { it.deviceIdentifier == first.id }
+        }.getOrNull() ?: return
+
+        runCatching {
+            ciq.getApplicationInfo(
+                STRIVE_APP_ID,
+                device,
+                object : ConnectIQ.IQApplicationInfoListener {
+                    override fun onApplicationInfoReceived(app: IQApp) {
+                        Log.d(TAG, "watch has the app: ${app.displayName} (${app.status})")
+                        appStatus = "installed"
+                    }
+
+                    override fun onApplicationNotInstalled(applicationId: String) {
+                        Log.d(TAG, "watch does NOT have the app: $applicationId")
+                        appStatus = "not_installed"
+                    }
+                }
+            )
+        }.onFailure {
+            Log.e(TAG, "getApplicationInfo threw", it)
         }
     }
 

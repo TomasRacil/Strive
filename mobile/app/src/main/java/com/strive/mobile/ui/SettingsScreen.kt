@@ -206,6 +206,19 @@ private fun WatchCard(state: AppState, watch: WatchRepository, t: (String) -> St
                     color = MaterialTheme.colorScheme.primary
                 )
             }
+
+            watch.appStatus?.let { state ->
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    when (state) {
+                        "installed" -> "Strive app on watch: installed"
+                        "not_installed" -> "Strive app on watch: NOT installed — install it from the beta link"
+                        else -> "Strive app on watch: unknown"
+                    },
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
