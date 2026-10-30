@@ -184,12 +184,15 @@ private fun WatchCard(state: AppState, watch: WatchRepository, t: (String) -> St
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    OutlinedButton(onClick = {
-                        watch.sendPlan(
-                            deviceId = device.id,
-                            items = state.exercises.map { it.id to state.suggestedWeight(it.id) }
-                        )
-                    }) {
+                    OutlinedButton(
+                        enabled = device.connected,
+                        onClick = {
+                            watch.sendPlan(
+                                deviceId = device.id,
+                                items = state.exercises.map { it.id to state.suggestedWeight(it.id) }
+                            )
+                        }
+                    ) {
                         Text(t("watch.send"), fontSize = 12.sp)
                     }
                 }

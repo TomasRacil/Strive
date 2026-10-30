@@ -1,14 +1,13 @@
 package com.strive.mobile.watch
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.garmin.android.connectiq.ConnectIQ
 import com.garmin.android.connectiq.IQApp
 import com.garmin.android.connectiq.IQDevice
-import org.json.JSONArray
-import org.json.JSONObject
 
 /**
  * Application id of the Connect IQ app. Must match `iq:application id` in
@@ -45,6 +44,7 @@ class WatchRepository(private val context: Context) {
 
     fun initialize() {
         if (connectIQ != null) return
+        Log.d(TAG, "initialize()")
 
         val ciq = ConnectIQ.getInstance(context, ConnectIQ.IQConnectType.WIRELESS)
         connectIQ = ciq
@@ -52,21 +52,25 @@ class WatchRepository(private val context: Context) {
         runCatching {
             ciq.initialize(context, true, object : ConnectIQ.ConnectIQListener {
                 override fun onSdkReady() {
+                    Log.d(TAG, "sdk ready")
                     sdkReady = true
                     status = ""
                     refreshDevices()
                 }
 
                 override fun onInitializeError(errorStatus: ConnectIQ.IQSdkErrorStatus) {
+                    Log.e(TAG, "sdk init error: $errorStatus")
                     sdkReady = false
                     status = "Garmin Connect Mobile is not available ($errorStatus)"
                 }
 
                 override fun onSdkShutDown() {
+                    Log.d(TAG, "sdk shutdown")
                     sdkReady = false
                 }
             })
         }.onFailure {
+            Log.e(TAG, "initialize threw", it)
             status = "Could not start the Garmin SDK: ${it.message}"
         }
     }
@@ -74,30 +78,62 @@ class WatchRepository(private val context: Context) {
     fun refreshDevices() {
         val ciq = connectIQ ?: return
         runCatching {
-            devices = ciq.knownDevices.map { device ->
-                WatchDevice(
-                    id = device.deviceIdentifier,
-                    name = device.friendlyName ?: "Garmin watch",
-                    connected = device.status == IQDevice.IQDeviceStatus.CONNECTED
-                )
+            val known = ciq.knownDevices
+            devices = known.map { it.toWatchDevice() }
+
+            // Subscribe to connection changes so the card flips to Connected on
+            // its own instead of lying until the next refresh.
+            known.forEach { device ->
+                runCatching {
+                    ciq.registerForDeviceEvents(device, object : ConnectIQ.IQDeviceEventListener {
+                        override fun onDeviceStatusChanged(
+                            changed: IQDevice,
+                            status: IQDevice.IQDeviceStatus
+                        ) {
+                            val connected = status == IQDevice.IQDeviceStatus.CONNECTED
+                            devices = devices.map {
+                                if (it.id == changed.deviceIdentifier) it.copy(connected = connected) else it
+                            }
+                        }
+                    })
+                }
             }
         }.onFailure {
             status = "Could not list watches: ${it.message}"
         }
     }
 
+    private fun IQDevice.toWatchDevice() = WatchDevice(
+        id = deviceIdentifier,
+        name = friendlyName ?: "Garmin watch",
+        connected = status == IQDevice.IQDeviceStatus.CONNECTED
+    )
+
     /**
      * Sends the current plan to the watch app and subscribes to anything it
      * sends back. Payload is JSON so both sides stay easy to extend.
      */
     fun sendPlan(deviceId: Long, items: List<Pair<String, Double>>) {
+        Log.d(TAG, "sendPlan(device=$deviceId, items=${items.size}, ciq=${connectIQ != null})")
         val ciq = connectIQ ?: return
         val device = runCatching {
             ciq.knownDevices.firstOrNull { it.deviceIdentifier == deviceId }
         }.getOrNull()
+        Log.d(TAG, "device=${device?.friendlyName} status=${device?.status}")
 
         if (device == null) {
             status = "That watch is no longer known to Garmin Connect."
+            return
+        }
+
+        // Gate on the live status from the device-event listener, not on the
+        // snapshot inside IQDevice: the snapshot goes stale and disagrees with
+        // what the card is showing.
+        val connectedNow = devices.firstOrNull { it.id == deviceId }?.connected ?: false
+        Log.d(TAG, "connectedNow=$connectedNow")
+        if (!connectedNow) {
+            status = "The watch is not connected. Wake it, keep it near the phone, " +
+                "and open Garmin Connect Mobile, then tap Find watches again."
             return
         }
 
@@ -111,6 +147,7 @@ class WatchRepository(private val context: Context) {
         )
 
         runCatching {
+            Log.d(TAG, "registering app events for ${app.applicationId}")
             ciq.registerForAppEvents(device, app, object : ConnectIQ.IQApplicationEventListener {
                 override fun onMessageReceived(
                     from: IQDevice,
@@ -118,21 +155,29 @@ class WatchRepository(private val context: Context) {
                     messages: List<Any>,
                     messageStatus: ConnectIQ.IQMessageStatus
                 ) {
+                    Log.d(TAG, "message received: $messages ($messageStatus)")
                     lastReceived = messages.map { it.toString() }
                 }
             })
 
-            ciq.sendMessage(device, app, payload.toString(), object : ConnectIQ.IQSendMessageListener {
+            Log.d(TAG, "sending payload: $payload")
+            ciq.sendMessage(device, app, payload, object : ConnectIQ.IQSendMessageListener {
                 override fun onMessageStatus(
                     to: IQDevice,
                     app: IQApp,
                     messageStatus: ConnectIQ.IQMessageStatus
                 ) {
+                    Log.d(TAG, "send status: $messageStatus")
                     status = "Plan sent: $messageStatus"
                 }
             })
         }.onFailure {
+            Log.e(TAG, "send threw", it)
             status = "Sending failed: ${it.message}"
         }
+    }
+
+    private companion object {
+        const val TAG = "StriveWatch"
     }
 }
