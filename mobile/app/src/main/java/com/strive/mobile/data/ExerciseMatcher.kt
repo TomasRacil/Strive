@@ -64,12 +64,10 @@ object ExerciseMatcher {
 
         library.firstOrNull { normalize(it.name) == key }?.let { return it }
 
-        // "incline dumbbell bench press" -> "bench press" once noise is stripped,
-        // but be conservative: only accept a full-token containment.
-        return library.firstOrNull { exercise ->
-            val name = normalize(exercise.name)
-            name.isNotEmpty() && (key.endsWith(name) || key.startsWith("$name ") || name.startsWith("$key "))
-        }
+        // No fuzzy containment here on purpose: once equipment and position
+        // words are stripped, a remaining difference is meaningful
+        // ("incline bench press" must not fall through to "bench press").
+        return null
     }
 
     /**
