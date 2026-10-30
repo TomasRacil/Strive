@@ -129,6 +129,8 @@ class StriveView extends Ui.View {
         if (restRemaining > 0 && timer != null) {
             timer.start(method(:onRestTick), 1000, true);
         }
+        // Re-arm the BLE scan now that the view is really on screen.
+        StriveApp.resumeBle();
         Ui.requestUpdate();
     }
 

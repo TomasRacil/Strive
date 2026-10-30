@@ -6,7 +6,16 @@ using Toybox.Lang;
 class StriveApp extends App.AppBase {
 
     var view;
-    var ble;
+    static var ble;
+
+    // Connect IQ may only honour a scan request once the view is actually on
+    // screen, so the view calls back here from onShow rather than relying on
+    // onStart alone.
+    static function resumeBle() as Void {
+        if (ble != null) {
+            ble.start();
+        }
+    }
 
     function initialize() {
         AppBase.initialize();
