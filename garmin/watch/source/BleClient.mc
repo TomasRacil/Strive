@@ -96,32 +96,50 @@ class BleClient extends Ble.BleDelegate {
         Ble.setScanState(Ble.SCAN_STATE_OFF);
     }
 
-    // Advertisements arrive in batches; the first one carrying our service UUID
-    // is the phone. Connect to it and stop scanning so the radio is free.
+    // Advertisements arrive in batches. Count everything seen, not just matches:
+    // "the watch sees no devices at all" and "it sees devices but none carry our
+    // service UUID" are completely different problems and need different fixes.
     function onScanResults(scanResults) as Void {
-        if (scanResults == null || connecting || device != null) {
+        if (scanResults == null) {
             return;
         }
 
+        var seen = 0;
+        var matched = 0;
         var result = scanResults.next();
         while (result != null) {
-            // The iterator hands back Lang.Object; pairDevice and the accessors
-            // below need the concrete type.
             var scanResult = result as Ble.ScanResult;
+            seen += 1;
             if (advertisesService(scanResult)) {
-                stopScan();
-                connecting = true;
-                setStatus("found");
-                try {
-                    Ble.pairDevice(scanResult);
-                } catch (e) {
-                    connecting = false;
-                    setStatus("pair err");
+                matched += 1;
+                if (!connecting && device == null) {
+                    stopScan();
+                    connecting = true;
+                    setStatus("found");
+                    try {
+                        Ble.pairDevice(scanResult);
+                    } catch (e) {
+                        connecting = false;
+                        setStatus("pair err");
+                    }
                 }
-                return;
             }
             result = scanResults.next();
         }
+
+        bump("ble_n", seen);
+        bump("ble_m", matched);
+        if (view != null) {
+            Ui.requestUpdate();
+        }
+    }
+
+    function bump(key, amount) {
+        var current = App.Storage.getValue(key);
+        if (current == null) {
+            current = 0;
+        }
+        App.Storage.setValue(key, current + amount);
     }
 
     function advertisesService(result as Ble.ScanResult) as Lang.Boolean {

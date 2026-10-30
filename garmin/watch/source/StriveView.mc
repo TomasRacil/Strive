@@ -208,24 +208,26 @@ class StriveView extends Ui.View {
 
         drawBleLine(dc, width, height);
 
-        // Receipt counter, always drawn so its presence also proves which build
-        // is installed. It stays 0 until a phone message actually arrives.
-        var received = App.Storage.getValue("msg_count");
-        if (received == null) {
-            received = 0;
-        }
-        dc.drawText(width / 2, height * 0.88, Gfx.FONT_XTINY,
-            "rx " + received.toString() + " a" + probeText("net_a") + " b" + probeText("net_b") + " p2",
+        // The web probes and message counters have served their purpose; only the
+        // BLE state earns screen space now.
+    }
+
+    // Direct BLE to the phone app. The status comes from BleClient; the two
+    // counters are "advertisements seen" / "advertisements carrying our service",
+    // which separates a blind radio from a UUID mismatch.
+    function drawBleLine(dc, width, height) {
+        dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(width / 2, height * 0.845, Gfx.FONT_XTINY,
+            "ble " + bleText() + " " + counter("ble_n") + "/" + counter("ble_m"),
             Gfx.TEXT_JUSTIFY_CENTER);
     }
 
-    // Direct BLE to the phone app, drawn on its own line above the probe line.
-    // The string is written by BleClient: scan, found, conn, svc, rd ok, wr ok,
-    // or an err/… variant. "-" means the client has not started yet.
-    function drawBleLine(dc, width, height) {
-        dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, height * 0.845, Gfx.FONT_XTINY, "ble " + bleText(),
-            Gfx.TEXT_JUSTIFY_CENTER);
+    function counter(key) as Lang.String {
+        var value = App.Storage.getValue(key);
+        if (value == null) {
+            return "0";
+        }
+        return value.toString();
     }
 
     function bleText() as Lang.String {
