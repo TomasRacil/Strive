@@ -51,7 +51,11 @@ class StriveStore(context: Context) {
                     name = o.optString("name"),
                     muscle = o.optString("muscle"),
                     targetReps = o.optInt("targetReps", 8),
-                    restSeconds = o.optInt("restSeconds", 120)
+                    restSeconds = o.optInt("restSeconds", 120),
+                    description = o.optString("description", ""),
+                    primary = readWeights(o.optJSONObject("primary")),
+                    secondary = readWeights(o.optJSONObject("secondary")),
+                    variations = readVariations(o.optJSONArray("variations"))
                 )
             }
         }.getOrNull()
@@ -60,16 +64,58 @@ class StriveStore(context: Context) {
     fun saveExercises(exercises: List<Exercise>) {
         val arr = JSONArray()
         exercises.forEach { e ->
-            arr.put(
-                JSONObject()
-                    .put("id", e.id)
-                    .put("name", e.name)
-                    .put("muscle", e.muscle)
-                    .put("targetReps", e.targetReps)
-                    .put("restSeconds", e.restSeconds)
-            )
+            val o = JSONObject()
+                .put("id", e.id)
+                .put("name", e.name)
+                .put("muscle", e.muscle)
+                .put("targetReps", e.targetReps)
+                .put("restSeconds", e.restSeconds)
+                .put("description", e.description)
+                .put("primary", writeWeights(e.primary))
+                .put("secondary", writeWeights(e.secondary))
+                .put("variations", writeVariations(e.variations))
+            arr.put(o)
         }
         prefs.edit().putString(KEY_EXERCISES, arr.toString()).apply()
+    }
+
+    private fun readWeights(o: JSONObject?): Map<String, Double> {
+        if (o == null) return emptyMap()
+        return o.keys().asSequence().associateWith { o.optDouble(it, 0.0) }
+    }
+
+    private fun writeWeights(map: Map<String, Double>): JSONObject {
+        val o = JSONObject()
+        map.forEach { (muscle, weight) -> o.put(muscle, weight) }
+        return o
+    }
+
+    private fun readVariations(arr: JSONArray?): List<Variation> {
+        if (arr == null) return emptyList()
+        return (0 until arr.length()).mapNotNull { i ->
+            val o = arr.optJSONObject(i) ?: return@mapNotNull null
+            Variation(
+                id = o.optString("id"),
+                name = o.optString("name"),
+                note = o.optString("note", ""),
+                targetReps = if (o.has("targetReps")) o.optInt("targetReps") else null,
+                restSeconds = if (o.has("restSeconds")) o.optInt("restSeconds") else null
+            )
+        }
+    }
+
+    private fun writeVariations(variations: List<Variation>): JSONArray {
+        val arr = JSONArray()
+        variations.forEach { v ->
+            val o = JSONObject()
+                .put("id", v.id)
+                .put("name", v.name)
+                .put("note", v.note)
+            if (v.targetReps != null) o.put("targetReps", v.targetReps)
+            if (v.restSeconds != null) o.put("restSeconds", v.restSeconds)
+            arr.put(o)
+        }
+        return arr
     }
 
     // ---------------------------------------------------------------- sessions

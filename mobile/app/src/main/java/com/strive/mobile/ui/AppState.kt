@@ -13,6 +13,7 @@ import com.strive.mobile.data.Session
 import com.strive.mobile.data.SetEntry
 import com.strive.mobile.data.Settings
 import com.strive.mobile.data.StriveStore
+import com.strive.mobile.data.Variation
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -50,9 +51,36 @@ class AppState(context: Context) {
     // Seeded once from the built-in library, then owned by the user: adding,
     // editing or deleting a lift persists the whole list.
     var exercises by mutableStateOf(
-        store.loadExercises() ?: Seed.exercises.also { store.saveExercises(it) }
+        migrate(store.loadExercises() ?: Seed.exercises)
     )
         private set
+
+    /**
+     * Libraries saved before muscle mapping existed have no primary/secondary
+     * data, which would leave the body map blank. For any lift whose id still
+     * matches the seed, fill the mapping in without touching the user's own
+     * name, reps or rest.
+     */
+    private fun migrate(loaded: List<Exercise>): List<Exercise> {
+        val seedById = Seed.exercises.associateBy { it.id }
+        var changed = false
+
+        val migrated = loaded.map { exercise ->
+            val seed = seedById[exercise.id] ?: return@map exercise
+            if (exercise.primary.isNotEmpty()) return@map exercise
+
+            changed = true
+            exercise.copy(
+                description = exercise.description.ifBlank { seed.description },
+                primary = seed.primary,
+                secondary = seed.secondary,
+                variations = if (exercise.variations.isEmpty()) seed.variations else exercise.variations
+            )
+        }
+
+        if (changed) store.saveExercises(migrated)
+        return migrated
+    }
 
     fun addExercise(name: String, muscle: String, targetReps: Int, restSeconds: Int) {
         val exercise = Exercise(
@@ -74,6 +102,21 @@ class AppState(context: Context) {
     fun deleteExercise(id: String) {
         exercises = exercises.filterNot { it.id == id }
         store.saveExercises(exercises)
+    }
+
+    fun addVariation(exerciseId: String, name: String, note: String) {
+        val updated = exercises.map { exercise ->
+            if (exercise.id != exerciseId) exercise
+            else exercise.copy(
+                variations = exercise.variations + Variation(
+                    id = UUID.randomUUID().toString(),
+                    name = name,
+                    note = note
+                )
+            )
+        }
+        exercises = updated
+        store.saveExercises(updated)
     }
 
     fun updateSettings(next: Settings) {

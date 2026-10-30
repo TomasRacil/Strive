@@ -1,16 +1,50 @@
 package com.strive.mobile.data
 
 /**
+ * One way of performing a lift. Same movement family, different setup - a
+ * sumo deadlift trains the same lift with different emphasis, and the user can
+ * add their own (their gym's cable stack, a machine variant, and so on).
+ */
+data class Variation(
+    val id: String,
+    val name: String,
+    val note: String = "",
+    val targetReps: Int? = null,
+    val restSeconds: Int? = null
+)
+
+/**
  * Weights are always stored in kilograms. The display unit is a formatting
  * concern only, so switching kg/lb never rewrites history.
+ *
+ * `primary` and `secondary` map muscle id -> load share (0..1) relative to the
+ * hardest-working muscle in the movement. See [Muscles] for the taxonomy.
  */
 data class Exercise(
     val id: String,
     val name: String,
     val muscle: String,
     val targetReps: Int,
-    val restSeconds: Int
-)
+    val restSeconds: Int,
+    val description: String = "",
+    val primary: Map<String, Double> = emptyMap(),
+    val secondary: Map<String, Double> = emptyMap(),
+    val variations: List<Variation> = emptyList()
+) {
+    /**
+     * Total load per muscle: primary at face value, secondary discounted to 60%,
+     * because a stabiliser is not doing the same work as the prime mover.
+     */
+    fun loadByMuscle(): Map<String, Double> {
+        val out = mutableMapOf<String, Double>()
+        primary.forEach { (muscle, weight) -> out[muscle] = (out[muscle] ?: 0.0) + weight }
+        secondary.forEach { (muscle, weight) -> out[muscle] = (out[muscle] ?: 0.0) + weight * 0.6 }
+        return out
+    }
+
+    /** Highest load in the movement, used to scale the body map. */
+    fun peakLoad(): Double = loadByMuscle().values.maxOrNull() ?: 1.0
+}
 
 data class SetEntry(
     val exerciseId: String,

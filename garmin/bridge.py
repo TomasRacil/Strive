@@ -133,12 +133,19 @@ def cmd_pull(args) -> int:
     end = date.today()
     start = end - timedelta(days=args.days)
 
+    # Garmin rejects an activity sub type in this filter ("Activity type cannot
+    # be an activity sub type"), so ask for everything in the window and filter
+    # here instead. Also version-proof against their taxonomy changing.
     try:
-        activities = client.get_activities_by_date(
-            start.isoformat(), end.isoformat(), activitytype="strength_training"
-        )
+        activities = client.get_activities_by_date(start.isoformat(), end.isoformat())
     except Exception as exc:  # noqa: BLE001
         die(f"could not list activities: {exc}")
+
+    activities = [
+        activity
+        for activity in (activities or [])
+        if ((activity.get("activityType") or {}).get("typeKey") or "") == "strength_training"
+    ]
 
     sessions = []
     for activity in activities or []:

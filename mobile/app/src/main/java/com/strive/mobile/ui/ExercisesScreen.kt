@@ -39,6 +39,23 @@ fun ExercisesScreen(state: AppState) {
 
     var showDialog by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Exercise?>(null) }
+    var detailId by remember { mutableStateOf<String?>(null) }
+
+    // Look the lift up rather than holding it, so editing it updates the detail
+    // view underneath instead of showing a stale copy.
+    val detail = detailId?.let { id -> state.exercises.firstOrNull { it.id == id } }
+
+    if (detail != null) {
+        ExerciseDetailScreen(
+            exercise = detail,
+            state = state,
+            onBack = { detailId = null },
+            onEdit = {
+                editing = detail
+                showDialog = true
+            }
+        )
+    } else {
 
     Column(
         modifier = Modifier
@@ -67,10 +84,7 @@ fun ExercisesScreen(state: AppState) {
                 Card(
                     Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            editing = exercise
-                            showDialog = true
-                        }
+                        .clickable { detailId = exercise.id }
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -91,6 +105,7 @@ fun ExercisesScreen(state: AppState) {
                 }
             }
         }
+    }
     }
 
     if (showDialog) {
