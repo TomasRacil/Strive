@@ -22,6 +22,26 @@ class StriveApp extends App.AppBase {
         // Proves the channel in the other direction: if the phone logs this, the
         // watch can reach it and only sendMessage is at fault.
         sendToPhone("hello-from-watch");
+        probeNetwork();
+    }
+
+    // Decisive experiment for sync. Garmin Connect's companion message bus is
+    // broken (CIQQA-4631), but a plain HTTPS request goes through a different
+    // Garmin service. A status code here means the watch can reach a server and
+    // we have a working channel that does not depend on that bus.
+    function probeNetwork() {
+        var options = {
+            :method => Comm.HTTP_REQUEST_METHOD_GET,
+            :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_TEXT_PLAIN
+        };
+        Comm.makeWebRequest("https://httpbin.org/status/200", null, options, method(:onProbe));
+    }
+
+    function onProbe(responseCode as Lang.Number, data as Lang.String or Null) as Void {
+        App.Storage.setValue("net_probe", responseCode);
+        if (view != null) {
+            Ui.requestUpdate();
+        }
     }
 
     function sendToPhone(text) {

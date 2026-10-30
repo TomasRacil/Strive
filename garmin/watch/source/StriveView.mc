@@ -4,6 +4,7 @@ using Toybox.Timer as Timer;
 using Toybox.Attention as Attention;
 using Toybox.Communications as Comm;
 using Toybox.Application as App;
+using Toybox.Lang;
 
 // One screen per exercise: the recommended load, the target reps, how many sets
 // you have logged this session, and a rest countdown between sets.
@@ -209,6 +210,18 @@ class StriveView extends Ui.View {
         if (received == null) {
             received = 0;
         }
-        dc.drawText(width / 2, height * 0.88, Gfx.FONT_XTINY, "rx " + received.toString(), Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(width / 2, height * 0.88, Gfx.FONT_XTINY,
+            "rx " + received.toString() + "  net " + netProbeText(), Gfx.TEXT_JUSTIFY_CENTER);
+    }
+
+    // Result of the HTTPS probe: an HTTP status code means the watch can reach a
+    // server, which is a data channel that does not use the broken Garmin
+    // companion message bus. "-" means the request has not answered yet.
+    function netProbeText() as Lang.String {
+        var code = App.Storage.getValue("net_probe");
+        if (code == null) {
+            return "-";
+        }
+        return code.toString();
     }
 }
