@@ -46,6 +46,8 @@ private val frontZones = listOf(
     Zone("abs", 41f, 56f, 18f, 26f, round = 4f),
     Zone("obliques", 33f, 56f, 7f, 24f, round = 3f),
     Zone("obliques", 60f, 56f, 7f, 24f, round = 3f),
+    Zone("hip_flexor", 41f, 82f, 18f, 9f, round = 4f),
+    Zone("adductors", 45f, 92f, 10f, 18f, round = 5f),
     Zone("biceps", 18f, 50f, 12f, 22f, round = 5f),
     Zone("biceps", 70f, 50f, 12f, 22f, round = 5f),
     Zone("forearm", 16f, 74f, 11f, 20f, round = 5f),
@@ -85,8 +87,10 @@ fun BodyMap(
     modifier: Modifier = Modifier
 ) {
     val base = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f)
-    val hot = MaterialTheme.colorScheme.primary
-    val warm = MaterialTheme.colorScheme.tertiary
+    // Red intensity scale: dark red where a muscle barely contributes, bright red
+    // where it is the prime mover. Read at a glance, which is the point.
+    val hot = Color(0xFFFF2D20)
+    val warm = Color(0xFF5A1512)
     val outline = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
 
     // Loads arrive keyed by muscle id; the figures are drawn by zone. Several

@@ -20,8 +20,20 @@ import java.time.ZoneId
 import java.util.UUID
 
 /** Sets logged in the session that is currently open. */
-class ActiveSession(val id: String, val startedAt: Long) {
+class ActiveSession(
+    val id: String,
+    val startedAt: Long,
+    val routineName: String? = null,
+    /** Lifts to work through, in order. Empty means free-form. */
+    val plannedIds: List<String> = emptyList()
+) {
     val sets = mutableStateListOf<SetEntry>()
+
+    /** Index into plannedIds. */
+    var index by mutableStateOf(0)
+
+    /** Set to the wall clock when the user marks the start of a set. */
+    var setStartedAt by mutableStateOf<Long?>(null)
 }
 
 /**
@@ -104,6 +116,12 @@ class AppState(context: Context) {
         store.saveExercises(exercises)
     }
 
+    fun addExercises(newOnes: List<Exercise>) {
+        if (newOnes.isEmpty()) return
+        exercises = exercises + newOnes
+        store.saveExercises(exercises)
+    }
+
     fun addVariation(exerciseId: String, name: String, note: String) {
         val updated = exercises.map { exercise ->
             if (exercise.id != exerciseId) exercise
@@ -124,9 +142,86 @@ class AppState(context: Context) {
         store.saveSettings(next)
     }
 
-    fun startSession() {
+    fun startSession(plannedIds: List<String> = emptyList(), routineName: String? = null) {
         if (active != null) return
-        active = ActiveSession(UUID.randomUUID().toString(), System.currentTimeMillis())
+        active = ActiveSession(
+            id = UUID.randomUUID().toString(),
+            startedAt = System.currentTimeMillis(),
+            routineName = routineName,
+            plannedIds = plannedIds
+        )
+    }
+
+    /** The lift the user is on right now: the planned one, else the first. */
+    fun currentExercise(): Exercise? {
+        val session = active
+        if (session != null && session.plannedIds.isNotEmpty()) {
+            val id = session.plannedIds.getOrNull(session.index) ?: return null
+            return exercises.firstOrNull { it.id == id }
+        }
+        return exercises.firstOrNull()
+    }
+
+    fun nextExercise() {
+        val session = active ?: return
+        session.setStartedAt = null
+        if (session.index < session.plannedIds.size - 1) session.index += 1
+    }
+
+    fun previousExercise() {
+        val session = active ?: return
+        session.setStartedAt = null
+        if (session.index > 0) session.index -= 1
+    }
+
+    fun startSet() {
+        active?.setStartedAt = System.currentTimeMillis()
+    }
+
+    /**
+     * Ends the current set and records what actually happened. The user corrects
+     * the recommendation here, which is what makes the next suggestion useful.
+     */
+    fun finishSet(exercise: Exercise, weightKg: Double, reps: Int, rir: Int?) {
+        val session = active ?: return
+        val startedAt = session.setStartedAt
+        val duration = if (startedAt != null) {
+            ((System.currentTimeMillis() - startedAt) / 1000).toInt().coerceAtLeast(0)
+        } else 0
+
+        session.sets.add(
+            SetEntry(
+                exerciseId = exercise.id,
+                exerciseName = exercise.name,
+                weightKg = weightKg,
+                reps = reps,
+                rir = rir,
+                timestamp = System.currentTimeMillis(),
+                durationSeconds = duration
+            )
+        )
+        session.setStartedAt = null
+    }
+
+    /**
+     * How many sets to aim for on this lift. Three is the default; if the last
+     * session completed three or more with reps left in reserve, aim higher.
+     */
+    fun targetSets(exerciseId: String): Int {
+        val last = sessions.firstOrNull { session ->
+            session.sets.any { it.exerciseId == exerciseId }
+        } ?: return 3
+
+        val sets = last.sets.filter { it.exerciseId == exerciseId }
+        val rirValues = sets.mapNotNull { it.rir }
+        val averageRir = if (rirValues.isEmpty()) 2.0 else rirValues.average()
+
+        return when {
+            sets.size >= 4 && averageRir >= 2.0 -> 5
+            sets.size >= 3 && averageRir >= 2.0 -> 4
+            sets.size <= 2 -> 3
+            else -> 3
+        }.coerceIn(2, 6)
     }
 
     fun suggestedWeight(exerciseId: String): Double =

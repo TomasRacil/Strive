@@ -145,7 +145,8 @@ class StriveStore(context: Context) {
                 weightKg = s.optDouble("weightKg", 0.0),
                 reps = s.optInt("reps", 0),
                 rir = if (s.has("rir") && !s.isNull("rir")) s.optInt("rir") else null,
-                timestamp = s.optLong("timestamp", 0L)
+                timestamp = s.optLong("timestamp", 0L),
+                durationSeconds = s.optInt("durationSeconds", 0)
             )
         }
         return Session(
@@ -165,6 +166,7 @@ class StriveStore(context: Context) {
                 .put("weightKg", s.weightKg)
                 .put("reps", s.reps)
                 .put("timestamp", s.timestamp)
+                .put("durationSeconds", s.durationSeconds)
             if (s.rir != null) o.put("rir", s.rir)
             setsArr.put(o)
         }
@@ -173,6 +175,37 @@ class StriveStore(context: Context) {
             .put("startedAt", session.startedAt)
             .put("sets", setsArr)
             .apply { if (session.endedAt != null) put("endedAt", session.endedAt) }
+    }
+
+    // ---------------------------------------------------------------- routines
+
+    fun loadRoutines(): List<Routine> {
+        val raw = prefs.getString(KEY_ROUTINES, null) ?: return emptyList()
+        return runCatching {
+            val arr = JSONArray(raw)
+            (0 until arr.length()).mapNotNull { i ->
+                val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                val ids = o.optJSONArray("exerciseIds") ?: JSONArray()
+                Routine(
+                    id = o.optString("id"),
+                    name = o.optString("name"),
+                    exerciseIds = (0 until ids.length()).map { ids.optString(it) }
+                )
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    fun saveRoutines(routines: List<Routine>) {
+        val arr = JSONArray()
+        routines.forEach { routine ->
+            arr.put(
+                JSONObject()
+                    .put("id", routine.id)
+                    .put("name", routine.name)
+                    .put("exerciseIds", JSONArray(routine.exerciseIds))
+            )
+        }
+        prefs.edit().putString(KEY_ROUTINES, arr.toString()).apply()
     }
 
     // ------------------------------------------------------------- progression
@@ -209,5 +242,6 @@ class StriveStore(context: Context) {
         const val KEY_SESSIONS = "sessions"
         const val KEY_PROGRESSION = "progression"
         const val KEY_EXERCISES = "exercises"
+        const val KEY_ROUTINES = "routines"
     }
 }

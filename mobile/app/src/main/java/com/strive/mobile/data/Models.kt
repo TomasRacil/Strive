@@ -52,7 +52,16 @@ data class SetEntry(
     val weightKg: Double,
     val reps: Int,
     val rir: Int?,
-    val timestamp: Long
+    val timestamp: Long,
+    /** How long the set took, from "start set" to "end set". 0 if unknown. */
+    val durationSeconds: Int = 0
+)
+
+/** A planned training session: a name and the lifts it contains, in order. */
+data class Routine(
+    val id: String,
+    val name: String,
+    val exerciseIds: List<String>
 )
 
 data class Session(

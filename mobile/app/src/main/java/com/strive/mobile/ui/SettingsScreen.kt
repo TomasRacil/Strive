@@ -161,11 +161,22 @@ private fun GarminImportCard(state: AppState, t: (String) -> String) {
                 ?.use { it.readText() }
                 ?: throw IllegalStateException("Could not read that file")
 
-            val sessions = GarminImport.parse(text, state.exercises)
-            val added = state.importSessions(sessions)
+            val result = GarminImport.parse(text, state.exercises)
+            state.addExercises(result.newExercises)
+            val added = state.importSessions(result.sessions)
 
-            if (added == 0) "Nothing new — those sessions are already in your history."
-            else "Imported $added session(s) from Garmin."
+            buildString {
+                append(
+                    if (added == 0) "Nothing new — those sessions are already in your history."
+                    else "Imported $added session(s) from Garmin."
+                )
+                if (result.newExercises.isNotEmpty()) {
+                    append(" Added ${result.newExercises.size} new lift(s) with inferred muscles.")
+                }
+                if (result.unmatchedSets > 0) {
+                    append(" ${result.unmatchedSets} set(s) had no recognisable exercise name.")
+                }
+            }
         }.getOrElse { "Import failed: ${it.message}" }
     }
 

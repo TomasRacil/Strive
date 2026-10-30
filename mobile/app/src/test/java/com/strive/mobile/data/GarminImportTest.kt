@@ -52,7 +52,8 @@ class GarminImportTest {
 
     @Test
     fun parsesASessionAndItsSets() {
-        val sessions = GarminImport.parse(sample, library)
+        val result = GarminImport.parse(sample, library)
+        val sessions = result.sessions
 
         assertEquals(1, sessions.size)
         val session = sessions.first()
@@ -65,8 +66,8 @@ class GarminImportTest {
 
     @Test
     fun mapsGarminExerciseNamesOntoTheLibrary() {
-        val sessions = GarminImport.parse(sample, library)
-        val sets = sessions.first().sets
+        val result = GarminImport.parse(sample, library)
+        val sets = result.sessions.first().sets
 
         // Known lift: rewritten to our own id so stats and progression apply.
         assertEquals("bench_press", sets[0].exerciseId)
@@ -74,10 +75,22 @@ class GarminImportTest {
         assertEquals(80.0, sets[0].weightKg, 0.001)
         assertEquals(8, sets[0].reps)
 
-        // Unknown lift: kept, not dropped.
-        assertEquals("garmin_unknown_thing", sets[1].exerciseId)
+        // Unknown lift: a library entry is created with inferred muscles rather
+        // than leaving the set orphaned.
         assertEquals("Cable Fly", sets[1].exerciseName)
         assertEquals(25.0, sets[1].weightKg, 0.001)
+        assertTrue(
+            "Cable Fly should get a muscle mapping",
+            result.newExercises.any { it.name == "Cable Fly" && it.primary.isNotEmpty() }
+        )
+    }
+
+    @Test
+    fun matchesGarminStyleNamesToShortLibraryNames() {
+        // The real-world case: long equipment-prefixed names against short ones.
+        assertEquals("squats", ExerciseMatcher.match("Barbell Back Squat", library)?.id)
+        assertEquals("bench_press", ExerciseMatcher.match("Barbell Bench Press", library)?.id)
+        assertEquals("overhead_press", ExerciseMatcher.match("Military Press", library)?.id)
     }
 
     @Test
@@ -98,6 +111,6 @@ class GarminImportTest {
             ]}]}
         """.trimIndent()
 
-        assertEquals(0, GarminImport.parse(json, library).size)
+        assertEquals(0, GarminImport.parse(json, library).sessions.size)
     }
 }

@@ -23,7 +23,20 @@ object GarminImport {
      * @param exercises the phone's library, used to map Garmin's generated
      * exercise ids onto real ones so imported history feeds the same stats.
      */
-    fun parse(json: String, exercises: List<Exercise>): List<Session> {
+    data class ImportResult(
+        val sessions: List<Session>,
+        val newExercises: List<Exercise>,
+        val unmatchedSets: Int
+    )
+
+    /**
+     * @param exercises the phone's library, used to map Garmin's generated
+     * exercise ids onto real ones so imported history feeds the same stats.
+     * Unknown lifts are created with inferred muscle mapping rather than left
+     * orphaned, because an unmapped set contributes nothing to progression,
+     * volume or the daily suggestion.
+     */
+    fun parse(json: String, exercises: List<Exercise>): ImportResult {
         val root = runCatching { JSONObject(json) }
             .getOrElse { throw ImportException("Not a Strive/Garmin export file.") }
 
@@ -31,9 +44,11 @@ object GarminImport {
             ?: runCatching { JSONArray(json) }.getOrNull()
             ?: throw ImportException("No \"sessions\" array in that file.")
 
-        val byName = exercises.associateBy { it.name.lowercase().trim() }
+        val working = exercises.toMutableList()
+        val created = mutableListOf<Exercise>()
+        var unmatched = 0
 
-        return (0 until array.length()).mapNotNull { index ->
+        val sessions = (0 until array.length()).mapNotNull { index ->
             val raw = array.optJSONObject(index) ?: return@mapNotNull null
             val startedAt = parseTime(raw.optString("timestamp")) ?: return@mapNotNull null
 
@@ -41,7 +56,24 @@ object GarminImport {
             val sets = (0 until setsArray.length()).mapNotNull { i ->
                 val s = setsArray.optJSONObject(i) ?: return@mapNotNull null
                 val name = s.optString("exerciseName")
-                val matched = byName[name.lowercase().trim()]
+
+                // Match against the library first, then invent an entry for a
+                // lift we have never seen, so nothing arrives unmapped.
+                var matched = ExerciseMatcher.match(name, working)
+                if (matched == null) {
+                    val inferred = ExerciseMatcher.infer(name)
+                    if (inferred != null) {
+                        val existing = working.firstOrNull { it.id == inferred.id }
+                        if (existing != null) {
+                            matched = existing
+                        } else {
+                            working.add(inferred)
+                            created.add(inferred)
+                            matched = inferred
+                        }
+                    }
+                }
+                if (matched == null) unmatched++
 
                 val weight = when {
                     s.has("weightKg") -> s.optDouble("weightKg", 0.0)
@@ -70,6 +102,8 @@ object GarminImport {
                 sets = sets
             )
         }
+
+        return ImportResult(sessions = sessions, newExercises = created, unmatchedSets = unmatched)
     }
 
     /** Accepts an offset timestamp, a local one, or a bare date. */
