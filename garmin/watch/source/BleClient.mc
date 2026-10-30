@@ -1,6 +1,7 @@
 using Toybox.BluetoothLowEnergy as Ble;
 using Toybox.Application as App;
 using Toybox.Lang;
+using Toybox.Timer as Timer;
 using Toybox.WatchUi as Ui;
 
 // Central-role BLE client: the watch connects out to the phone, which runs a
@@ -22,6 +23,7 @@ class BleClient extends Ble.BleDelegate {
     var device;
     var scanning;
     var connecting;
+    var rescanTimer;
 
     function initialize(v) {
         BleDelegate.initialize();
@@ -80,6 +82,24 @@ class BleClient extends Ble.BleDelegate {
         }
 
         beginScan();
+        startRescan();
+    }
+
+    // The platform stops scanning when the app loses foreground or the scan
+    // window lapses, and the first scan usually runs before the phone is
+    // advertising. Without this the client scans once, misses, and sits at 0/0
+    // forever no matter what the phone does afterwards.
+    function startRescan() {
+        if (rescanTimer == null) {
+            rescanTimer = new Timer.Timer();
+        }
+        rescanTimer.start(method(:onRescan), 8000, true);
+    }
+
+    function onRescan() as Void {
+        if (device == null && !connecting) {
+            beginScan();
+        }
     }
 
     function beginScan() {
