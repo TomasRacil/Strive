@@ -15,6 +15,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,6 +49,49 @@ fun HomeScreen(state: AppState, onStartTraining: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatCard(t("home.streak"), state.streak().toString(), Modifier.weight(1f))
                 StatCard(t("home.total"), state.sessions.size.toString(), Modifier.weight(1f))
+            }
+        }
+
+        item {
+            val plan = Stats.recommend(
+                exercises = state.exercises,
+                sessions = state.sessions,
+                progression = state.progression,
+                fallbackKg = AppState.DEFAULT_START_KG,
+                limit = 5
+            )
+
+            if (plan.isNotEmpty()) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(t("home.plan"), fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(10.dp))
+
+                        plan.forEach { item ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(item.exercise.name, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        item.reason,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Text(
+                                    Format.weight(item.weightKg, unit),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 

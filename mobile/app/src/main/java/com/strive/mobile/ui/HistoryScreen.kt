@@ -6,13 +6,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -25,23 +30,42 @@ fun HistoryScreen(state: AppState) {
     val unit = state.settings.unit
     fun t(key: String) = Strings.t(lang, key)
 
-    LazyColumn(
+    var mode by remember { mutableStateOf("sessions") }
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            Text(t("history.title"), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
+        Text(t("history.title"), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
+
+        // Sessions and progress are two views of the same history, so they share
+        // a tab rather than taking another slot in the bottom bar.
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = mode == "sessions",
+                onClick = { mode = "sessions" },
+                label = { Text(t("hist.sessions")) }
+            )
+            FilterChip(
+                selected = mode == "progress",
+                onClick = { mode = "progress" },
+                label = { Text(t("hist.progress")) }
+            )
+        }
+
+        if (mode == "progress") {
+            ProgressView(state)
+            return@Column
         }
 
         if (state.sessions.isEmpty()) {
-            item {
-                Text(t("history.empty"), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            Text(t("history.empty"), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        items(state.sessions) { session ->
+        state.sessions.forEach { session ->
             Card(Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.padding(16.dp),

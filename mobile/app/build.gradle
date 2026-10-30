@@ -54,4 +54,8 @@ dependencies {
     // Native companion SDK. A PWA/WebView cannot talk to a Connect IQ app over
     // Bluetooth - this is the only supported path on Android.
     implementation 'com.garmin.connectiq:ciq-companion-app-sdk:2.2.0'
+
+    testImplementation 'junit:junit:4.13.2'
+    // Real org.json on the JVM: the Android stub throws in unit tests.
+    testImplementation 'org.json:json:20240303'
 }

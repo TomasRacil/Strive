@@ -142,6 +142,24 @@ class AppState(context: Context) {
         store.saveSessions(all)
     }
 
+    /**
+     * Merge externally produced sessions (Garmin imports) into history.
+     * Duplicates are dropped by id, so importing the same file twice is a no-op.
+     * Returns how many were actually added.
+     */
+    fun importSessions(incoming: List<Session>): Int {
+        if (incoming.isEmpty()) return 0
+
+        val known = sessions.map { it.id }.toSet()
+        val fresh = incoming.filter { it.id.isNotBlank() && it.id !in known && it.sets.isNotEmpty() }
+        if (fresh.isEmpty()) return 0
+
+        val all = (fresh + sessions).sortedByDescending { it.startedAt }
+        sessions = all
+        store.saveSessions(all)
+        return fresh.size
+    }
+
     fun dismissSummary() {
         lastFinished = null
     }

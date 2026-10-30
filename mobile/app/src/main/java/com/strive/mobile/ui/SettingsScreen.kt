@@ -18,12 +18,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.strive.mobile.watch.WatchRepository
+import com.strive.mobile.data.GarminImport
 
 @Composable
 fun SettingsScreen(state: AppState, watch: WatchRepository) {
@@ -80,6 +88,8 @@ fun SettingsScreen(state: AppState, watch: WatchRepository) {
 
         item { WatchCard(state, watch, ::t) }
 
+        item { GarminImportCard(state, ::t) }
+
         item {
             SectionCard(t("settings.about")) {
                 Text(
@@ -132,6 +142,55 @@ private fun ChipRow(
                 onClick = { onSelect(value) },
                 label = { Text(label) }
             )
+        }
+    }
+}
+
+@Composable
+private fun GarminImportCard(state: AppState, t: (String) -> String) {
+    val context = LocalContext.current
+    var message by remember { mutableStateOf("") }
+
+    val picker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        message = runCatching {
+            val text = context.contentResolver.openInputStream(uri)
+                ?.bufferedReader()
+                ?.use { it.readText() }
+                ?: throw IllegalStateException("Could not read that file")
+
+            val sessions = GarminImport.parse(text, state.exercises)
+            val added = state.importSessions(sessions)
+
+            if (added == 0) "Nothing new — those sessions are already in your history."
+            else "Imported $added session(s) from Garmin."
+        }.getOrElse { "Import failed: ${it.message}" }
+    }
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text(t("settings.garminImport"), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                t("settings.garminImportText"),
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+
+            Button(
+                onClick = { picker.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(t("settings.chooseFile"))
+            }
+
+            if (message.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(message, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }

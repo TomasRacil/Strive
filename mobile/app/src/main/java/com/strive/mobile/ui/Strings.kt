@@ -28,6 +28,7 @@ object Strings {
 
         "home.streak" to "Day streak",
         "home.subtitle" to "Welcome back",
+        "home.plan" to "Today's suggestion",
         "home.total" to "Sessions",
         "home.week" to "This week",
         "home.recent" to "Recent activity",
@@ -55,6 +56,14 @@ object Strings {
         "history.volume" to "Volume",
         "history.duration" to "Duration",
 
+        "hist.sessions" to "Sessions",
+        "hist.progress" to "Progress",
+        "prog.e1rm" to "Estimated 1RM",
+        "prog.weekly" to "Total volume",
+        "prog.last8" to "Last 8 weeks",
+        "prog.sessions" to "sessions",
+        "prog.noData" to "Log this lift twice to see a trend.",
+
         "settings.title" to "Settings",
         "settings.appearance" to "Appearance",
         "settings.theme" to "Theme",
@@ -70,6 +79,10 @@ object Strings {
         "settings.privacy" to "Privacy",
         "settings.privacyText" to "No account, no server, no analytics. Everything you log is stored on the phone and, when paired, on your watch.",
         "settings.version" to "Version",
+
+        "settings.garminImport" to "Import from Garmin",
+        "settings.garminImportText" to "On a computer run: python garmin/bridge.py pull --days 30 --out garmin_sessions.json  — then pick that file here. Imported sessions feed your history, progress charts and the suggestion on the home screen.",
+        "settings.chooseFile" to "Choose a file",
 
         "watch.title" to "Garmin watch",
         "watch.subtitle" to "Send your plan to the watch app and pull logged sets back.",
@@ -103,6 +116,7 @@ object Strings {
 
         "home.streak" to "Dní v řadě",
         "home.subtitle" to "Vítej zpět",
+        "home.plan" to "Doporučení na dnes",
         "home.total" to "Tréninků",
         "home.week" to "Tento týden",
         "home.recent" to "Poslední aktivita",
@@ -130,6 +144,14 @@ object Strings {
         "history.volume" to "Objem",
         "history.duration" to "Trvání",
 
+        "hist.sessions" to "Tréninky",
+        "hist.progress" to "Pokrok",
+        "prog.e1rm" to "Odhadované 1RM",
+        "prog.weekly" to "Celkový objem",
+        "prog.last8" to "Posledních 8 týdnů",
+        "prog.sessions" to "tréninků",
+        "prog.noData" to "Zapiš tento cvik dvakrát, ať je vidět trend.",
+
         "settings.title" to "Nastavení",
         "settings.appearance" to "Vzhled",
         "settings.theme" to "Motiv",
@@ -145,6 +167,10 @@ object Strings {
         "settings.privacy" to "Soukromí",
         "settings.privacyText" to "Žádný účet, žádný server, žádná analytika. Vše, co zapíšeš, zůstává v telefonu a po spárování v hodinkách.",
         "settings.version" to "Verze",
+
+        "settings.garminImport" to "Import z Garminu",
+        "settings.garminImportText" to "Na počítači spusť: python garmin/bridge.py pull --days 30 --out garmin_sessions.json  — pak ten soubor vyber tady. Importované tréninky se započítají do historie, grafů i doporučení na úvodní obrazovce.",
+        "settings.chooseFile" to "Vybrat soubor",
 
         "watch.title" to "Garmin hodinky",
         "watch.subtitle" to "Pošli plán do aplikace v hodinkách a stáhni zapsané série zpět.",
