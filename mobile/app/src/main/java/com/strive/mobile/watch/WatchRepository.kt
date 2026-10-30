@@ -135,6 +135,39 @@ class WatchRepository(private val context: Context) {
         }
     }
 
+    /**
+     * Asks the watch to open the Strive app. Doubles as the only honest test of
+     * whether the phone-to-watch channel works at all: the SDK reports a status
+     * either way, unlike sendMessage which can go quiet.
+     */
+    fun openOnWatch(deviceId: Long) {
+        val ciq = connectIQ ?: return
+        val device = runCatching {
+            ciq.knownDevices.firstOrNull { it.deviceIdentifier == deviceId }
+        }.getOrNull()
+
+        if (device == null) {
+            status = "That watch is no longer known to Garmin Connect."
+            return
+        }
+
+        runCatching {
+            ciq.openApplication(device, app, object : ConnectIQ.IQOpenApplicationListener {
+                override fun onOpenApplicationResponse(
+                    target: IQDevice,
+                    application: IQApp,
+                    openStatus: ConnectIQ.IQOpenApplicationStatus
+                ) {
+                    Log.d(TAG, "openApplication: $openStatus")
+                    status = "Open on watch: $openStatus"
+                }
+            })
+        }.onFailure {
+            Log.e(TAG, "openApplication threw", it)
+            status = "Could not open the app: ${it.message}"
+        }
+    }
+
     private fun IQDevice.toWatchDevice() = WatchDevice(
         id = deviceIdentifier,
         name = friendlyName ?: "Garmin watch",
@@ -169,28 +202,39 @@ class WatchRepository(private val context: Context) {
             return
         }
 
-        // A Map is delivered to the watch as a Dictionary. A JSON string would
-        // arrive as a plain string and the watch could not read it.
-        val payload: Map<String, Any> = mapOf(
-            "type" to "plan",
-            "items" to items.map { (exerciseId, weightKg) ->
-                mapOf<String, Any>("id" to exerciseId, "weight" to weightKg)
-            }
-        )
+        // Garmin's own sample only ever sends Strings, Booleans and Integers over
+        // sendMessage; a Map is silently dropped. So the plan travels as
+        // "id=weight;id=weight".
+        val payload: String = items.joinToString(";") { (id, kg) -> "$id=$kg" }
 
         runCatching {
-            Log.d(TAG, "registering app events for ${app.applicationId}")
-            ciq.registerForAppEvents(device, app, object : ConnectIQ.IQApplicationEventListener {
-                override fun onMessageReceived(
-                    from: IQDevice,
-                    app: IQApp,
-                    messages: List<Any>,
-                    messageStatus: ConnectIQ.IQMessageStatus
-                ) {
-                    Log.d(TAG, "message received: $messages ($messageStatus)")
-                    lastReceived = messages.map { it.toString() }
+            Log.d(TAG, "registering events for ${app.applicationId}")
+            // Combined registration: device and app listeners together. The
+            // separate registerForAppEvents call does not appear to bind the
+            // app mailbox that sendMessage delivers into.
+            ciq.registerForEvents(
+                device,
+                object : ConnectIQ.IQDeviceEventListener {
+                    override fun onDeviceStatusChanged(
+                        changed: IQDevice,
+                        status: IQDevice.IQDeviceStatus
+                    ) {
+                        Log.d(TAG, "device status: $status")
+                    }
+                },
+                app,
+                object : ConnectIQ.IQApplicationEventListener {
+                    override fun onMessageReceived(
+                        from: IQDevice,
+                        app: IQApp,
+                        messages: List<Any>,
+                        messageStatus: ConnectIQ.IQMessageStatus
+                    ) {
+                        Log.d(TAG, "message received: $messages ($messageStatus)")
+                        lastReceived = messages.map { it.toString() }
+                    }
                 }
-            })
+            )
 
             Log.d(TAG, "sending payload: $payload")
             ciq.sendMessage(device, app, payload, object : ConnectIQ.IQSendMessageListener {

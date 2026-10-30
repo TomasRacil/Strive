@@ -21,18 +21,29 @@ class StriveApp extends App.AppBase {
         Comm.registerForPhoneAppMessages(method(:onPhoneAppMessage));
     }
 
-    // The phone sends a plan as a Dictionary with string keys:
-    //   {"type":"plan","items":[{"id":"bench_press","weight":22.5}, ...]}
+    // The phone sends a delimited string of exercise id -> weight. A Dictionary
+    // is also handled in case the transport ever delivers one.
     function onPhoneAppMessage(msg as Comm.PhoneAppMessage) as Void {
-        var data = msg.data;
-        if (!(data instanceof Lang.Dictionary)) {
-            return;
+        // Receipt counter, shown on screen. It separates "the message never
+        // arrived" from "it arrived and the parsing is wrong".
+        var count = App.Storage.getValue("msg_count");
+        if (count == null) {
+            count = 0;
         }
-        if (data["type"] != "plan") {
+        App.Storage.setValue("msg_count", count + 1);
+
+        var data = msg.data;
+        if (data == null) {
             return;
         }
 
-        Plan.replace(data["items"]);
+        if (data instanceof Lang.String) {
+            Plan.replaceFromText(data);
+        } else if (data instanceof Lang.Dictionary) {
+            Plan.replaceFromDictionary(data);
+        } else {
+            return;
+        }
 
         if (view != null) {
             view.reloadFromPlan();

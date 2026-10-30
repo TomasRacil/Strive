@@ -3,6 +3,7 @@ using Toybox.Graphics as Gfx;
 using Toybox.Timer as Timer;
 using Toybox.Attention as Attention;
 using Toybox.Communications as Comm;
+using Toybox.Application as App;
 
 // One screen per exercise: the recommended load, the target reps, how many sets
 // you have logged this session, and a rest countdown between sets.
@@ -201,5 +202,11 @@ class StriveView extends Ui.View {
 
         dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
         dc.drawText(width / 2, height * 0.80, Gfx.FONT_XTINY, "swipe: change lift", Gfx.TEXT_JUSTIFY_CENTER);
+
+        // Receipt counter: proves whether a phone message ever reached the app.
+        var received = App.Storage.getValue("msg_count");
+        if (received != null && received > 0) {
+            dc.drawText(width / 2, height * 0.88, Gfx.FONT_XTINY, "rx " + received.toString(), Gfx.TEXT_JUSTIFY_CENTER);
+        }
     }
 }

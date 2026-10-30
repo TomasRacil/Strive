@@ -196,6 +196,14 @@ private fun WatchCard(state: AppState, watch: WatchRepository, t: (String) -> St
                         Text(t("watch.send"), fontSize = 12.sp)
                     }
                 }
+
+                OutlinedButton(
+                    enabled = device.connected,
+                    onClick = { watch.openOnWatch(device.id) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Open Strive on the watch", fontSize = 12.sp)
+                }
             }
 
             if (watch.status.isNotBlank()) {
