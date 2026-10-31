@@ -45,3 +45,8 @@ mobile/captures
 # Connect IQ build output and signing key
 garmin/watch/build/
 garmin/watch/keys/
+
+graphify-out/
+
+
+.agents/
