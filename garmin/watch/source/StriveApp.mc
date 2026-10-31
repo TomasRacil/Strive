@@ -1,18 +1,109 @@
 using Toybox.Application as App;
 using Toybox.WatchUi as Ui;
 using Toybox.Communications as Comm;
+using Toybox.Time as Time;
 using Toybox.Lang;
 
 // Entry point. Everything that crosses to the phone goes through Bus, and
 // everything Bus emits goes through the persistent outbox, so nothing here has
 // to know how the transport behaves.
+//
+// This is also the one place that owns the training loop. The loop is pure - no
+// Storage, no clock, no Graphics - so the wiring lives here: build it from what
+// the phone has sent, hand it to the views, and write the sets it accepts.
 class StriveApp extends App.AppBase {
-
-    var view;
 
     // Outbound queue, owned by an instance: Monkey C cannot take a method
     // reference from a static function, so the pacing timer needs an object.
     static var outbox = new Outbox();
+
+    // One loop for the app's lifetime. The views hold a reference to it, so it is
+    // never replaced, only reloaded when the phone sends something newer.
+    static var loop = null;
+
+    // The finished session, waiting for Home to be on screen to show it. The
+    // finish cascade pops three views before it gets there, and the summary has
+    // to survive the trip.
+    static var finished = null;
+
+    // ---- the loop --------------------------------------------------------
+
+    static function trainingLoop() {
+        if (loop == null) {
+            loop = newLoop();
+        }
+        return loop;
+    }
+
+    static function newLoop() {
+        var now = Time.now().value();
+        // No seeds: calibration is a separate milestone, so every lift starts
+        // from Engine's fallback seed and its own floor. That is the documented
+        // behaviour before the first calibration, not a missing wire.
+        return new TrainingLoop(
+            TrainingLoop.specsFrom(Library.exercises()),
+            Library.historySets(now),
+            {},
+            Library.profile("bodyKg", null),
+            Library.recWeights()
+        );
+    }
+
+    // A library, history or recommendation arrived. The catalogue is swapped in
+    // place rather than the loop rebuilt: the loop holds the session's tallies
+    // and the view on screen holds the loop.
+    static function refreshLoop() as Void {
+        if (loop == null) {
+            return;
+        }
+        var now = Time.now().value();
+        loop.reload(
+            TrainingLoop.specsFrom(Library.exercises()),
+            Library.historySets(now),
+            null,
+            Library.profile("bodyKg", null),
+            Library.recWeights()
+        );
+    }
+
+    // ---- the session -----------------------------------------------------
+
+    // One accepted set, in the order that matters: the session exists, the set is
+    // in Storage with the RIR the user confirmed, and only then does it go on the
+    // wire. A set that never reaches the phone is still a set that happened.
+    static function recordSet(loopRef, set) as Void {
+        if (!Session.active()) {
+            Session.start();
+            Bus.sendStart();
+        }
+
+        Session.addSetWithRir(loopRef.exerciseId, set[:weight], set[:reps], set[:rir]);
+        Bus.sendSet(Session.setCount() - 1);
+    }
+
+    // Finishes the session: the log is read out before anything is cleared, and
+    // the summary is held for Home to draw. An empty session sends nothing - the
+    // phone has no use for an `end` with no sets in it.
+    static function endSession() as Void {
+        var summary = Session.summary();
+        if (summary[:sets] > 0) {
+            Bus.sendEnd(summary[:log]);
+        }
+        Session.end();
+        finished = summary;
+    }
+
+    static function pendingSummary() {
+        return finished;
+    }
+
+    static function takeSummary() {
+        var summary = finished;
+        finished = null;
+        return summary;
+    }
+
+    // ---- bus plumbing ----------------------------------------------------
 
     static function enqueue(id, body) as Void {
         outbox.add(id, body);
@@ -42,28 +133,15 @@ class StriveApp extends App.AppBase {
         outbox.pump();
     }
 
-    // Hands the finished session to the bus. One message, queued and acked: a
-    // lost log is a lost workout, so it is never sent and forgotten.
-    static function syncLog(logText) as Void {
-        Bus.sendEnd(logText);
-    }
-
-    static function syncStart() as Void {
-        Bus.sendStart();
-    }
-
-    static function syncSet() as Void {
-        Bus.sendSet(Session.setCount() - 1);
-    }
+    // ---- lifecycle -------------------------------------------------------
 
     function initialize() {
         AppBase.initialize();
-        view = null;
     }
 
     function getInitialView() {
-        view = new StriveView();
-        return [ view, new StriveDelegate(view) ];
+        var home = new HomeView(trainingLoop());
+        return [ home, new HomeDelegate(home) ];
     }
 
     // The bus is the only transport: the HTTP probes that used to fire here were
@@ -104,14 +182,14 @@ class StriveApp extends App.AppBase {
             return;
         }
 
-        // A plan, a library or a recommendation can change the load on screen,
-        // so the view re-reads it rather than waiting for the next launch.
-        if (view != null) {
-            if (Text.same(applied, "plan") || Text.same(applied, "lib") || Text.same(applied, "rec")) {
-                view.reloadFromPlan();
-            }
-            Ui.requestUpdate();
+        // A library, a recommendation or a history can change what the picker
+        // offers and what the next set is loaded to, so the loop re-reads them
+        // rather than waiting for the next launch.
+        if (Text.same(applied, "lib") || Text.same(applied, "rec") ||
+            Text.same(applied, "hist") || Text.same(applied, "profile")) {
+            refreshLoop();
         }
+        Ui.requestUpdate();
     }
 }
 
