@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.strive.mobile.watch.WatchRepository
 import com.strive.mobile.data.GarminImport
-import com.strive.mobile.ble.BleSyncServer
 
 @Composable
 fun SettingsScreen(state: AppState, watch: WatchRepository) {
@@ -90,8 +89,6 @@ fun SettingsScreen(state: AppState, watch: WatchRepository) {
         item { WatchCard(state, watch, ::t) }
 
         item { GarminImportCard(state, ::t) }
-
-        item { BleSyncCard() }
 
         item {
             SectionCard(t("settings.about")) {
@@ -343,81 +340,6 @@ private fun WatchCard(state: AppState, watch: WatchRepository, t: (String) -> St
                     Text(line, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                 }
             }
-        }
-    }
-}
-
-// Direct BLE to the watch: the phone is the peripheral, so this is a server
-// plus an advertiser. Probe only — the watch reads one value and writes one.
-@Composable
-private fun BleSyncCard() {
-    val context = LocalContext.current
-    val server = remember { BleSyncServer.get(context) }
-    var pendingStart by remember { mutableStateOf(false) }
-
-    // Android 12+ gates the advertiser behind BLUETOOTH_ADVERTISE, so the grant
-    // has to be requested before the first start rather than assumed.
-    val permissions = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { granted ->
-        if (!pendingStart) return@rememberLauncherForActivityResult
-        pendingStart = false
-        if (granted.values.all { it }) server.start() else server.reportPermissionDenied()
-    }
-
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Text("BLE sync (direct)", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "Talks to the watch over Bluetooth directly, without Garmin Connect. " +
-                    "Keep this phone unlocked and the watch app open.",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(12.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = {
-                        val missing = BleSyncServer.missingPermissions(context)
-                        if (missing.isEmpty()) {
-                            server.start()
-                        } else {
-                            pendingStart = true
-                            permissions.launch(missing.toTypedArray())
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Start BLE sync", fontSize = 13.sp)
-                }
-
-                OutlinedButton(
-                    onClick = { server.stop() },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Stop BLE sync", fontSize = 13.sp)
-                }
-            }
-
-            Spacer(Modifier.height(10.dp))
-            Text(
-                server.statusText,
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                "advertising: ${if (server.isAdvertising) "yes" else "no"}   " +
-                    "connected: ${server.connectedDeviceCount}",
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                "last value from watch: ${server.lastLogValue.ifBlank { "—" }}",
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
