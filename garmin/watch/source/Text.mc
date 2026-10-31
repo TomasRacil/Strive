@@ -54,6 +54,27 @@ module Text {
         return found + start;
     }
 
+    // A countdown or a duration: "1:42", "10:00". Minutes are not padded -
+    // "0:09" is a rest that has just started, and the single digit is the cue.
+    function clock(seconds) as Lang.String {
+        var value = seconds == null || seconds < 0 ? 0 : seconds;
+        var minutes = value / 60;
+        var secs = value % 60;
+        var pad = secs < 10 ? "0" : "";
+        return minutes.toString() + ":" + pad + secs.toString();
+    }
+
+    // A name cut to what a row can hold. A round face loses the ends of a long
+    // exercise name, and "Overhead Pre" reads as a truncation where a wrapped
+    // name reads as a second row the app forgot to draw.
+    function fit(text, max) as Lang.String {
+        if (text == null) {
+            return "";
+        }
+        var value = text.toString();
+        return value.length() > max ? value.substring(0, max) : value;
+    }
+
     // Drops the surrounding braces of a JSON object body.
     function trimBraces(text) as Lang.String {
         var chars = text.toCharArray();
