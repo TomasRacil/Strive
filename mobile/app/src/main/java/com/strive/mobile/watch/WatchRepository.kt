@@ -519,8 +519,14 @@ class WatchRepository(private val context: Context) {
 
         store.saveSessions(merged.sortedByDescending { it.startedAt })
         onSessionSaved?.invoke(session)
+        // Tonnage the way the rest of the app counts it: body mass is priced in
+        // for bodyweight movements, so a calisthenics session is not "0 kg".
+        val volume = session.volumeKg(
+            store.loadExercises().orEmpty(),
+            store.loadSettings().bodyKg
+        )
         status = "Session from the watch: ${session.sets.size} sets, " +
-            "${session.volumeKg.toInt()} kg"
+            "${volume.toInt()} kg"
     }
 
     /**

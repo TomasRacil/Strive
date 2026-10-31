@@ -153,8 +153,9 @@ class WatchInboxTest {
 
         assertEquals(listOf("bench_press", "squats"), session.sets.map { it.exerciseId })
         assertEquals(listOf("Bench press", "Squats"), session.sets.map { it.exerciseName })
-        // 100 x 8 + 140 x 6 = 1640, the same tonnage the watch's summary shows.
-        assertEquals(1640.0, session.volumeKg, 0.001)
+        // 100 x 8 + 140 x 6 = 1640, external load only: neither lift is a
+        // bodyweight movement, so body mass adds nothing here.
+        assertEquals(1640.0, session.volumeKg(emptyList(), 80.0), 0.001)
         // `dur` is what the watch measured; history derives duration from start
         // and end, so the start has to be back-dated from it.
         assertEquals(1800L, session.durationSeconds)
