@@ -11,6 +11,8 @@ import com.garmin.android.connectiq.ConnectIQ
 import com.garmin.android.connectiq.IQApp
 import com.garmin.android.connectiq.IQDevice
 import com.strive.mobile.BuildConfig
+import com.strive.mobile.data.Session
+import com.strive.mobile.data.StriveStore
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -42,6 +44,29 @@ class WatchRepository(private val context: Context) {
     /** Which watch the framed bus is talking to. Set by the action that knows. */
     private var busDeviceId: Long? = null
 
+    /** Where a session finished on the watch is written. Same file the UI reads. */
+    private val store = StriveStore(context)
+
+    /**
+     * Names for the exercise ids the watch sends. Read once: the library changes
+     * only when the user edits it, and a set should not re-parse it.
+     */
+    private val exerciseNames: Map<String, String> by lazy {
+        store.loadExercises().orEmpty().associate { it.id to it.name }
+    }
+
+    /**
+     * The payload-to-history mapping. It holds the live sessions, so it must be
+     * the same instance for the lifetime of the repository.
+     */
+    private val inbox = WatchInbox(nameOf = { id -> exerciseNames[id] ?: id })
+
+    /** The snapshots last built for the watch, kept so `ready` can re-send them. */
+    private var lastPlan: JSONObject? = null
+    private var lastRec: JSONObject? = null
+    private var lastHistory: JSONObject? = null
+    private var lastPlanVersion: Long = 0
+
     /**
      * The framed protocol. Everything the phone sends goes through here, and
      * everything the watch sends arrives here: the legacy delimited string is
@@ -65,6 +90,20 @@ class WatchRepository(private val context: Context) {
             mainHandler.postDelayed(this, 100)
         }
     }
+
+    init {
+        // The bus frames, chunks and acknowledges; what an applied message means
+        // for history is this class's job. Without this assignment every `start`,
+        // `set`, `end` and `ready` from the watch is acked and then dropped.
+        bus.onMessage = ::applyFromWatch
+    }
+
+    /**
+     * Called with a session the watch finished, once it is in the store. The
+     * activity uses it to refresh the in-memory history the screens read, which
+     * the store write alone would leave stale until the next launch.
+     */
+    var onSessionSaved: ((Session) -> Unit)? = null
 
     var sdkReady by mutableStateOf(false)
         private set
@@ -187,22 +226,10 @@ class WatchRepository(private val context: Context) {
         }.getOrNull() ?: return
 
         runCatching {
-            ciq.registerForAppEvents(device, app, object : ConnectIQ.IQApplicationEventListener {
-                override fun onMessageReceived(
-                    from: IQDevice,
-                    app: IQApp,
-                    messages: List<Any>,
-                    messageStatus: ConnectIQ.IQMessageStatus
-                ) {
-                    Log.d(TAG, "message FROM WATCH: $messages ($messageStatus)")
-                    lastReceived = messages.map { it.toString() }
-                    // The framed bus is the only consumer: a raw string is one
-                    // chunk of one message, not a message in itself.
-                    messages.forEach { message ->
-                        if (message is String) bus.onIncoming(message)
-                    }
-                }
-            })
+            // The same listener the send path registers: one object, one place
+            // where a frame reaches the bus, so the two registrations cannot
+            // drift apart.
+            ciq.registerForAppEvents(device, app, watchMessages())
         }.onFailure {
             Log.e(TAG, "could not register for app events", it)
         }
@@ -333,8 +360,20 @@ class WatchRepository(private val context: Context) {
 
         busDeviceId = deviceId
 
-        val planId = bus.sendSnapshot("plan", planPayload(items))
-        val recId = bus.sendSnapshot("rec", recommendationPayload(items))
+        val plan = planPayload(items)
+        val rec = recommendationPayload(items)
+        val history = historyPayload()
+
+        // Remembered so a `ready` from a watch that lost them can be answered
+        // without the user sending the plan again.
+        lastPlan = plan
+        lastRec = rec
+        lastHistory = history
+        lastPlanVersion = plan.optLong("v")
+
+        val planId = bus.sendSnapshot("plan", plan)
+        val recId = bus.sendSnapshot("rec", rec)
+        bus.sendSnapshot("hist", history)
         bus.tick()
 
         status = if (planId == null || recId == null) {
@@ -389,6 +428,42 @@ class WatchRepository(private val context: Context) {
             .put("items", rows)
     }
 
+    /**
+     * The last three sets of each exercise, which is all the watch's offline
+     * recommendation reads.
+     *
+     * Up to forty exercises keeps the body inside the bus limit; the bus refuses
+     * an oversized body rather than truncating it, and a watch with no history
+     * only loses its offline suggestion, so dropping the tail is the cheap half
+     * of that trade. `ageDays` is in the protocol's units, not milliseconds.
+     */
+    private fun historyPayload(): JSONObject {
+        val now = System.currentTimeMillis()
+        val byExercise = store.loadSessions()
+            .flatMap { it.sets }
+            .groupBy { it.exerciseId }
+
+        val rows = JSONObject()
+        byExercise.entries
+            .sortedByDescending { (_, sets) -> sets.maxOf { it.timestamp } }
+            .take(40)
+            .forEach { (id, sets) ->
+                val recent = JSONArray()
+                sets.sortedByDescending { it.timestamp }.take(3).forEach { set ->
+                    recent.put(
+                        JSONArray()
+                            .put(set.weightKg)
+                            .put(set.reps)
+                            .put(set.rir ?: -1)
+                            .put(((now - set.timestamp) / 86_400_000L).coerceAtLeast(0))
+                    )
+                }
+                rows.put(id, recent)
+            }
+
+        return JSONObject().put("ex", rows)
+    }
+
     /** Every registration of watch messages goes through the framed bus. */
     private fun watchMessages() = object : ConnectIQ.IQApplicationEventListener {
         override fun onMessageReceived(
@@ -403,6 +478,73 @@ class WatchRepository(private val context: Context) {
                 if (message is String) bus.onIncoming(message)
             }
         }
+    }
+
+    // ---- messages from the watch -----------------------------------------
+
+    /**
+     * Everything the watch sends that is not an ack or a retry lands here, one
+     * applied message at a time. The inbox decides what it means; this method
+     * only carries out the two things it can ask for: write a session to history,
+     * or re-send a snapshot the watch is behind on.
+     */
+    private fun applyFromWatch(kind: String, payload: JSONObject?) {
+        val effect = runCatching { inbox.apply(kind, payload, heldSnapshots()) }
+            .onFailure { Log.e(TAG, "could not apply $kind", it) }
+            .getOrNull() ?: return
+
+        when (effect) {
+            is WatchInbox.Effect.Save -> save(effect.session)
+            is WatchInbox.Effect.Resend -> effect.kinds.forEach { resendSnapshot(it) }
+        }
+    }
+
+    /**
+     * Writes a finished watch session into history, upserting by id.
+     *
+     * The guard against a replayed `end` is the store, not the inbox: a message
+     * re-delivered after the app was killed finds its row already there, which an
+     * in-memory set of ended sids would not.
+     */
+    private fun save(session: Session) {
+        val all = store.loadSessions()
+        val existing = all.firstOrNull { it.id == session.id }
+        if (existing == session) return
+
+        val merged = if (existing == null) {
+            all + session
+        } else {
+            all.map { if (it.id == session.id) session else it }
+        }
+
+        store.saveSessions(merged.sortedByDescending { it.startedAt })
+        onSessionSaved?.invoke(session)
+        status = "Session from the watch: ${session.sets.size} sets, " +
+            "${session.volumeKg.toInt()} kg"
+    }
+
+    /**
+     * What the phone holds, in the versions `ready` reports. The library snapshot
+     * is not built yet, so its version stays at zero and a `lib` re-send is never
+     * asked for.
+     */
+    private fun heldSnapshots() = WatchInbox.Held(
+        libVersion = 0,
+        planVersion = lastPlanVersion,
+        hasHistory = lastHistory != null
+    )
+
+    /** Re-sends one snapshot the watch said it is behind on. */
+    private fun resendSnapshot(kind: String) {
+        val payload = when (kind) {
+            "plan" -> lastPlan
+            "rec" -> lastRec
+            "hist" -> lastHistory
+            else -> null
+        } ?: return
+
+        bus.sendSnapshot(kind, payload)
+        Log.d(TAG, "re-sent $kind after ready")
     }
 
     /**
