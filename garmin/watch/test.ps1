@@ -73,6 +73,7 @@ while (-not $held) {
 }
 
 $startedSimulator = $false
+$simulatorPid = $null
 try {
     & $monkeyc -f test.jungle -d $Device -o "build\Strive-test.prg" -y $key -t
     if ($LASTEXITCODE -ne 0) {
@@ -82,7 +83,8 @@ try {
 
     if (-not (Get-Process simulator -ErrorAction SilentlyContinue)) {
         Write-Host "Starting the Connect IQ simulator for $Device..."
-        Start-Process -FilePath $simulator -ArgumentList "-d", $Device | Out-Null
+        $sim = Start-Process -FilePath $simulator -ArgumentList "-d", $Device -PassThru
+        $simulatorPid = $sim.Id
         $startedSimulator = $true
         Start-Sleep -Seconds 30
     }
@@ -121,7 +123,10 @@ try {
     }
 } finally {
     if ($startedSimulator -and -not $KeepSimulator) {
-        Get-Process simulator -ErrorAction SilentlyContinue | Stop-Process -Force
+        # Only the instance this run started. Killing every simulator.exe took
+        # the instance another worktree was pushing to, which is how two agents
+        # testing at once wedged each other.
+        Stop-Process -Id $simulatorPid -Force -ErrorAction SilentlyContinue
     }
     Remove-Item -Recurse -Force $lockPath -ErrorAction SilentlyContinue
 }
