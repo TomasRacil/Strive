@@ -53,7 +53,10 @@ class EngineTest {
         val advice = Engine.nextLoad(
             spec(c.getJSONObject("spec")),
             engineSets(c.getJSONArray("history")),
-            c.getDouble("seedKg")
+            c.getDouble("seedKg"),
+            // A case with no bodyKg runs the default the phone uses before
+            // onboarding has asked for a weight.
+            if (c.has("bodyKg")) c.getDouble("bodyKg") else Engine.DEFAULT_BODY_KG
         )
         close(advice.weightKg, c.getDouble("expectWeight"), "weightKg")
             ?: if (advice.targetReps != c.getInt("expectReps")) {

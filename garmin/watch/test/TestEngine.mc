@@ -63,7 +63,9 @@ function testVectorNextLoad(logger) as Lang.Boolean {
 
     for (var i = 0; i < cases.size(); i++) {
         var c = cases[i];
-        var advice = Engine.nextLoad(c[:spec], c[:history], c[:seedKg]);
+        // A case without bodyKg passes null, which is the watch's own state
+        // before the profile has a weight: the engine falls back to its default.
+        var advice = Engine.nextLoad(c[:spec], c[:history], c[:seedKg], c[:bodyKg]);
 
         if (!vectorsClose(advice[:weight], c[:expectWeight]) || advice[:reps] != c[:expectReps]) {
             logger.debug("nextLoad " + c[:name].toString() + ": " + advice[:weight].toString() + "x" + advice[:reps].toString());
@@ -232,9 +234,33 @@ function testRestExtensionConvergesAtTheCeiling(logger) as Lang.Boolean {
 
 (:test)
 function testEmptyHistoryUsesTheSeedAndTheFloor(logger) as Lang.Boolean {
-    var advice = Engine.nextLoad(testSpec(), [], 0.0);
+    var advice = Engine.nextLoad(testSpec(), [], 0.0, null);
     logger.debug("empty history: " + advice[:weight].toString() + "x" + advice[:reps].toString());
     return vectorsClose(advice[:weight], 20.0) && advice[:reps] == 10;
+}
+
+function testPullUpSpec() {
+    return {
+        :id => "pull_ups", :lo => 6, :hi => 10, :inc => 2.5, :minW => 0.0,
+        :rest => 120, :pattern => "pullup", :bw => 1.0,
+        :primary => { "latissimus_dorsi" => 1.0 },
+        :secondary => { "biceps_brachii" => 0.6 }
+    };
+}
+
+// No body weight in the profile yet: the engine has to price bodyweight work
+// with its documented default, or every pull-up set scores zero and the
+// tie-break, not the effort, picks the set to progress from.
+(:test)
+function testMissingBodyWeightStillScoresBodyweight(logger) as Lang.Boolean {
+    var history = [
+        { :weight => 0.0, :reps => 15, :rir => 0 },
+        { :weight => 0.0, :reps => 15, :rir => 3 }
+    ];
+
+    var advice = Engine.nextLoad(testPullUpSpec(), history, 0.0, null);
+    logger.debug("no body weight: " + advice[:weight].toString() + "x" + advice[:reps].toString());
+    return vectorsClose(advice[:weight], 2.5) && advice[:reps] == 6;
 }
 
 (:test)

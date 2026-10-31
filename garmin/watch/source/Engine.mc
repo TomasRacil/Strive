@@ -47,6 +47,12 @@ module Engine {
     const SEED_FRACTION = 0.65;
     const FALLBACK_SEED_KG = 20.0;
 
+    // Body mass assumed before onboarding has asked for one. A bodyweight set is
+    // priced at bodyKg * :bw, so without it every pull-up set scores e1rm 0 and
+    // the tie-break decides which one was top. The real profile weight is passed
+    // in as soon as there is one.
+    const DEFAULT_BODY_KG = 80.0;
+
     const DAY_SECONDS = 86400.0;
     const DAYS_IN_WINDOW_28 = 28;
 
@@ -77,13 +83,20 @@ module Engine {
     // first. Empty history falls back to the seed, aimed at the top of the range
     // because a seed is deliberately conservative.
     //
-    // "top" is the highest e1rm. Ties go to more reps and then less RIR, which
-    // is what makes bodyweight work come out right: every set there has weight
-    // 0, so every e1rm is 0 and without a tie-break "top" would be whichever set
-    // happened to be logged first.
-    function nextLoad(spec, history, seedKg) {
+    // `bodyKg` is what makes a bodyweight set scoreable: weight 0 priced at body
+    // mass times :bw, so 15 pull-ups at 3 in reserve beats 15 at failure. A
+    // caller with no body weight yet passes null and gets DEFAULT_BODY_KG.
+    //
+    // "top" is the highest e1rm. Ties go to more reps and then to more reps in
+    // reserve: two sets of one lift that score the same, and the one that left
+    // more in the tank is the one worth progressing from.
+    function nextLoad(spec, history, seedKg, bodyKg) {
         var lo = spec[:lo];
         var hi = spec[:hi];
+
+        if (bodyKg == null) {
+            bodyKg = DEFAULT_BODY_KG;
+        }
 
         if (history == null || history.size() == 0) {
             return { :weight => clampToSpec(seedKg, spec), :reps => hi };
@@ -91,7 +104,7 @@ module Engine {
 
         var top = history[0];
         for (var i = 1; i < history.size(); i++) {
-            if (betterSet(history[i], top)) {
+            if (betterSet(history[i], top, spec, bodyKg)) {
                 top = history[i];
             }
         }
@@ -112,20 +125,27 @@ module Engine {
 
         return {
             :weight => clampToSpec(raw, spec),
-            :reps => raw > base ? lo : hi
+            // Any load change targets the bottom of the range: an increase has to
+            // be earned, and a deload rebuilds reps before plates.
+            :reps => raw != base ? lo : hi
         };
     }
 
-    function betterSet(candidate, best) {
-        var candidateE1rm = e1rm(candidate[:weight], candidate[:reps], rirOf(candidate));
-        var bestE1rm = e1rm(best[:weight], best[:reps], rirOf(best));
+    function betterSet(candidate, best, spec, bodyKg) {
+        // A spec that forgot :bw is a loaded lift, not a crash.
+        var fraction = spec[:bw];
+        if (fraction == null) {
+            fraction = 0.0;
+        }
+        var candidateE1rm = e1rmBodyweight(candidate[:weight], candidate[:reps], rirOf(candidate), bodyKg, fraction);
+        var bestE1rm = e1rmBodyweight(best[:weight], best[:reps], rirOf(best), bodyKg, fraction);
         if (candidateE1rm != bestE1rm) {
             return candidateE1rm > bestE1rm;
         }
         if (candidate[:reps] != best[:reps]) {
             return candidate[:reps] > best[:reps];
         }
-        return rirOf(candidate) < rirOf(best);
+        return rirOf(candidate) > rirOf(best);
     }
 
     // ---- 3. how many sets ------------------------------------------------
@@ -258,7 +278,11 @@ module Engine {
             }
 
             var daysSince = 7.0;
-            var oldest = -1.0;
+            // The newest set, not the oldest: days since last trained is how long
+            // the muscle has had to recover. The oldest would read a lift trained
+            // this morning as stale, so training it more often would earn more of
+            // the staleness bonus.
+            var newest = -1.0;
             var daySeen = {};
             var windowStart = now - DAYS_IN_WINDOW_28 * 86400;
 
@@ -269,16 +293,16 @@ module Engine {
                 }
 
                 var age = ageDays(set[:ts], now);
-                if (age > oldest) {
-                    oldest = age;
+                if (newest < 0.0 || age < newest) {
+                    newest = age;
                 }
                 if (set[:ts] >= windowStart && set[:ts] <= now) {
                     daySeen[(set[:ts] / 86400).toNumber()] = true;
                 }
             }
 
-            if (oldest >= 0.0) {
-                daysSince = oldest > 7.0 ? 7.0 : oldest;
+            if (newest >= 0.0) {
+                daysSince = newest > 7.0 ? 7.0 : newest;
             }
 
             var timesTrained = daySeen.size();
