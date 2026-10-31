@@ -287,7 +287,9 @@ private fun WatchCard(state: AppState, watch: WatchRepository, t: (String) -> St
                 OutlinedButton(
                     enabled = device.connected,
                     onClick = {
-                        watch.sendText(device.id, "ping " + System.currentTimeMillis() / 1000)
+                        // The framed `hello`: the watch answers `ready` and the
+                        // bus re-sends whatever the phone is holding.
+                        watch.sendHello(device.id)
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
