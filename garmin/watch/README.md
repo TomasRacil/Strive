@@ -117,5 +117,24 @@ source/StriveView.mc      the screen
 source/StriveDelegate.mc  button handling
 source/Progress.mc        local per-exercise progression
 source/Exercises.mc       compiled-in exercise list
+source/Engine.mc          the training engine: loads, recovery, ranking, rest
+test/Vectors.mc           generated: the shared cases from shared/engine-vectors.json
 keys/                     developer key (gitignored)
 ```
+
+## Training engine
+
+`source/Engine.mc` is a port of the phone's `Engine.kt`: estimated 1RM, the next
+load, weekly muscle load and recovery, exercise ranking, heart-rate-aware rest
+and the calibration seeds. It is pure - no Storage, no UI - so the watch can
+recommend and rest-time with no phone in range.
+
+The two implementations are kept in agreement by `shared/engine-vectors.json` at
+the repository root. Both test suites run it; `tools/gen_engine_vectors.py`
+turns it into `test/Vectors.mc` because Monkey C has no JSON parser:
+
+```powershell
+python tools\gen_engine_vectors.py           # after changing the JSON
+python tools\gen_engine_vectors.py --check   # non-zero if Vectors.mc is stale
+```
+
