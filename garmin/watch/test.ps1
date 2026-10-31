@@ -84,10 +84,21 @@ try {
         Write-Host "Starting the Connect IQ simulator for $Device..."
         Start-Process -FilePath $simulator -ArgumentList "-d", $Device | Out-Null
         $startedSimulator = $true
-        Start-Sleep -Seconds 18
+        Start-Sleep -Seconds 30
     }
 
-    $raw = & $monkeydo "build\Strive-test.prg" $Device /t 2>&1 | Out-String
+    # The simulator takes a variable time to open its port, and on a loaded
+    # machine (gradle daemons, other agents) it is far longer than the old fixed
+    # 18 s. Retry until it answers instead of assuming a boot time.
+    $raw = ""
+    for ($attempt = 1; $attempt -le 12; $attempt++) {
+        $raw = & $monkeydo "build\Strive-test.prg" $Device /t 2>&1 | Out-String
+        if ($raw -notmatch 'Unable to connect to simulator') {
+            break
+        }
+        Write-Host "Simulator not ready (attempt $attempt), waiting..."
+        Start-Sleep -Seconds 10
+    }
     Write-Host $raw
 
     # monkeydo exits 0 whether the suite passed or failed, so the summary line is
@@ -106,7 +117,12 @@ try {
 }
 
 if ($code -ne 0) {
-    Write-Host "Tests failed." -ForegroundColor Red
+    if ([string]::IsNullOrWhiteSpace($raw)) {
+        Write-Host "The simulator did not answer: monkeydo returned nothing." -ForegroundColor Red
+        Write-Host "It is running but wedged (no device loaded, no output). Kill it, then reboot or log out and back in: on this machine it has stayed wedged across restarts of simulator.exe alone." -ForegroundColor Yellow
+    } else {
+        Write-Host "Tests failed." -ForegroundColor Red
+    }
     exit $code
 }
 Write-Host "Tests passed." -ForegroundColor Green
