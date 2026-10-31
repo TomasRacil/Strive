@@ -119,6 +119,10 @@ class StriveApp extends App.AppBase {
     }
 
     static function rejected(id) as Void {
+        // The phone answered N|: it received the message and refused it. That is
+        // the one bus outcome that needs the user - a rejected session log will
+        // not arrive by itself - so it gets the pattern that means exactly that.
+        Haptics.syncFailure();
         outbox.failed(id);
     }
 
