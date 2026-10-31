@@ -70,7 +70,28 @@ data class Session(
     val endedAt: Long?,
     val sets: List<SetEntry>
 ) {
-    val volumeKg: Double get() = sets.sumOf { it.weightKg * it.reps }
+    /**
+     * Tonnage with body mass priced in for bodyweight movements.
+     *
+     * The mass moved by a set is `bodyKg * fraction + weightKg`, the same load
+     * the engine estimates a one-rep max from. Counting only the external weight
+     * makes a session of pull-ups and push-ups report 0 kg, which is not what
+     * the athlete did; counting body mass as well makes a calisthenics session
+     * comparable with a barbell one.
+     *
+     * The library is passed in instead of reached for: history outlives it, and
+     * a lift deleted from the library keeps its sets but has no fraction left,
+     * so only its external load can be counted.
+     */
+    fun volumeKg(exercises: List<Exercise>, bodyKg: Double): Double {
+        val fractionById = exercises.associate { it.id to EngineSpec.bodyweightFraction(it) }
+        return sets.sumOf { set ->
+            val fraction = fractionById[set.exerciseId] ?: 0.0
+            val load = if (fraction > 0.0) bodyKg * fraction + set.weightKg else set.weightKg
+            load * set.reps
+        }
+    }
+
     val durationSeconds: Long get() = endedAt?.let { (it - startedAt) / 1000 } ?: 0
 }
 

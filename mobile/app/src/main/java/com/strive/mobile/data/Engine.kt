@@ -92,6 +92,17 @@ data class EngineSpec(
         )
 
         /**
+         * Share of body mass the exercise moves, straight from the table above:
+         * 1.0 for a pull-up, 0 for anything loaded with plates.
+         *
+         * Session volume needs this and nothing else from a spec, and the table
+         * is the only place a fraction is declared - a second copy in the volume
+         * maths would drift from the one the engine progresses with.
+         */
+        fun bodyweightFraction(exercise: Exercise): Double =
+            DEFAULTS[exercise.id]?.bodyweightFraction ?: 0.0
+
+        /**
          * Builds a spec from a library entry.
          *
          * Unknown exercises get a rep range of target +/- 2 and 2.5 kg steps,
@@ -184,10 +195,11 @@ object Engine {
      * has asked for it.
      *
      * Progression needs a body mass even then: a bodyweight set is priced at
-     * `bodyKg * bodyweightFraction`, and without it every set of a pull-up
-     * scores e1rm 0 and the tie-break decides which one was "top". One
-     * documented number is better than 80.0 sprinkled through the call sites -
-     * the caller passes the real profile weight as soon as it has one.
+     * `bodyKg * bodyweightFraction` plus its external load, and without it every
+     * set of a pull-up scores e1rm 0 and the tie-break decides which one was
+     * "top". One documented number is better than 80.0 sprinkled through the
+     * call sites - the caller passes the real profile weight as soon as it has
+     * one.
      */
     const val DEFAULT_BODY_KG = 80.0
 
@@ -210,9 +222,16 @@ object Engine {
         e1rm(weightKg, reps, rir, 0.0, 0.0)
 
     /**
-     * The bodyweight form: when no external load was logged, the mass moved is
-     * body mass times the movement's fraction (push-up 0.65, squat 0.85,
-     * pull-up 1.0). A logged weight always wins over the estimate.
+     * The bodyweight form: the mass moved is body mass times the movement's
+     * fraction (push-up 0.65, squat 0.85, pull-up 1.0) plus whatever was hanging
+     * off the lifter.
+     *
+     * External weight is additive, never a replacement. A +2.5 kg plate on an
+     * 80 kg pull-up is 82.5 kg moved; reading it as 2.5 kg drops the body from
+     * the estimate and scores a harder set below an easier one, so the top set
+     * becomes the unweighted warm-up and the next load is nonsense. For a lift
+     * with fraction 0 the load is the logged weight alone: body mass has no part
+     * in a bench press, however much the profile says.
      */
     fun e1rm(
         weightKg: Double,
@@ -222,7 +241,11 @@ object Engine {
         bodyweightFraction: Double
     ): Double {
         val effectiveReps = (reps + rir).coerceIn(0, MAX_EFFECTIVE_REPS)
-        val load = if (weightKg > 0.0) weightKg else bodyKg * bodyweightFraction
+        val load = if (bodyweightFraction > 0.0) {
+            bodyKg * bodyweightFraction + weightKg
+        } else {
+            weightKg
+        }
         return load * (1.0 + effectiveReps / 30.0)
     }
 

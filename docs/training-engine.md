@@ -21,8 +21,13 @@ All weights are kilograms. All reps are whole numbers. RIR is "reps in reserve":
 
 Epley with RIR counted as reps not taken. `reps + rir` is clamped to 30: beyond
 that the estimate explodes and the input is more likely wrong than extreme. For a
-bodyweight movement (`weight = 0`) the same formula runs on body mass times the
-movement's bodyweight fraction (push-up 0.65, squat 0.85, pull-up 1.0).
+bodyweight movement the same formula runs on body mass times the movement's
+bodyweight fraction (push-up 0.65, squat 0.85, pull-up 1.0) plus any external
+load: a plate on a pull-up adds to the mass moved instead of replacing it, so
++2.5 kg on an 80 kg lifter is 82.5 kg and not 2.5 kg. Session tonnage is that
+same load times reps, so a calisthenics session counts the body it moved; the
+watch's `end` message still reports external-load tonnage only, and the phone
+recomputes the priced figure from the log.
 
 Body mass comes from the profile. Before onboarding has asked for it, the engine
 uses `DEFAULT_BODY_KG = 80`, one constant in each implementation: without a body

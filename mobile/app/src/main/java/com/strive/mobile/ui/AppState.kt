@@ -404,7 +404,7 @@ class AppState(context: Context) {
 
     fun volumeLastDays(days: Int): Double {
         val since = System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
-        return sessions.filter { it.startedAt >= since }.sumOf { it.volumeKg }
+        return sessions.filter { it.startedAt >= since }.sumOf { it.volumeKg(exercises, settings.bodyKg) }
     }
 
     fun sessionsLastDays(days: Int): Int {

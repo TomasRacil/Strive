@@ -62,9 +62,20 @@ module Engine {
         return e1rmBodyweight(weight, reps, rir, 0.0, 0.0);
     }
 
-    // Bodyweight form: with no external load the mass moved is body mass times
-    // the movement's fraction. A logged weight always wins over the estimate.
+    // Bodyweight form: the mass moved is body mass times the movement's fraction
+    // plus whatever was hanging off the lifter.
+    //
+    // External weight is additive, never a replacement. A +2.5 kg plate on an
+    // 80 kg pull-up is 82.5 kg moved; reading it as 2.5 kg drops the body from
+    // the estimate, so a harder set scores below an easier one and the top set
+    // becomes the unweighted warm-up. A lift with fraction 0 is the logged
+    // weight alone - body mass plays no part in a bench press.
     function e1rmBodyweight(weight, reps, rir, bodyKg, fraction) {
+        // A spec that forgot :bw is a loaded lift, not a crash.
+        if (fraction == null) {
+            fraction = 0.0;
+        }
+
         var effective = reps + rir;
         if (effective < 0) {
             effective = 0;
@@ -73,7 +84,7 @@ module Engine {
             effective = MAX_EFFECTIVE_REPS;
         }
 
-        var load = weight > 0.0 ? weight : bodyKg * fraction;
+        var load = fraction > 0.0 ? (bodyKg * fraction) + weight : weight;
         return load * (1.0 + effective / 30.0);
     }
 
