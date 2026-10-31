@@ -1,1 +1,6 @@
 project.manifest = manifest.xml
+# Only source/ is compiled. Without this the compiler walks the whole project
+# directory and picks up attic/ - the retired direct-BLE client and the weight
+# picker, kept for reference but calling methods the comm-test screen no longer
+# has.
+base.sourcePath = source

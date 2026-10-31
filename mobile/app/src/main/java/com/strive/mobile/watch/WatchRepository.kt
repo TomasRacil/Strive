@@ -1,6 +1,8 @@
 package com.strive.mobile.watch
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -8,6 +10,7 @@ import androidx.compose.runtime.setValue
 import com.garmin.android.connectiq.ConnectIQ
 import com.garmin.android.connectiq.IQApp
 import com.garmin.android.connectiq.IQDevice
+import com.strive.mobile.BuildConfig
 
 /**
  * Application id of the Connect IQ app. Must match `iq:application id` in
@@ -32,6 +35,7 @@ class WatchRepository(private val context: Context) {
 
     private var connectIQ: ConnectIQ? = null
     private val app = IQApp(STRIVE_APP_ID)
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     var sdkReady by mutableStateOf(false)
         private set
@@ -47,10 +51,25 @@ class WatchRepository(private val context: Context) {
         private set
 
     fun initialize() {
-        if (connectIQ != null) return
+        if (connectIQ != null) {
+            // Already initialised: the SDK is ready by now, so refreshing here is
+            // safe. This is what a second tap on "Find watches" does.
+            refreshDevices()
+            return
+        }
         Log.d(TAG, "initialize()")
 
-        val ciq = ConnectIQ.getInstance(context, ConnectIQ.IQConnectType.WIRELESS)
+        // TETHERED makes the SDK listen on 7381 for the Connect IQ simulator,
+        // which is what `adb forward tcp:7381 tcp:7381` forwards to. WIRELESS is
+        // the real path through Garmin Connect Mobile, so it stays the default.
+        val mode = if (BuildConfig.CIQ_TETHERED) {
+            ConnectIQ.IQConnectType.TETHERED
+        } else {
+            ConnectIQ.IQConnectType.WIRELESS
+        }
+        Log.d(TAG, "connect type: $mode")
+
+        val ciq = ConnectIQ.getInstance(context, mode)
         connectIQ = ciq
 
         runCatching {
@@ -59,7 +78,21 @@ class WatchRepository(private val context: Context) {
                     Log.d(TAG, "sdk ready")
                     sdkReady = true
                     status = ""
-                    refreshDevices()
+
+                    // In TETHERED mode the ADB strategy answers no SDK call until
+                    // the simulator actually connects: there is no device list to
+                    // fetch yet, and getApplicationInfo throws
+                    // InvalidStateException. So wait for the connection instead of
+                    // polling a channel that has nothing on the other end.
+                    if (BuildConfig.CIQ_TETHERED) {
+                        status = "Waiting for the simulator — Connection > Start in the Connect IQ simulator"
+                        return
+                    }
+
+                    // The strategy marks itself initialised only after this
+                    // callback returns, so a direct call here is too early; one
+                    // main-loop tick later it is ready.
+                    mainHandler.post { refreshDevices() }
                 }
 
                 override fun onInitializeError(errorStatus: ConnectIQ.IQSdkErrorStatus) {
@@ -81,6 +114,10 @@ class WatchRepository(private val context: Context) {
 
     fun refreshDevices() {
         val ciq = connectIQ ?: return
+        // initialize() is asynchronous, so a caller that fires straight after it
+        // would otherwise hit the SDK before it is ready and get
+        // InvalidStateException: "SDK not initialized".
+        if (!sdkReady) return
         runCatching {
             val known = ciq.knownDevices
             val previous = devices.associateBy { it.id }
@@ -279,6 +316,74 @@ class WatchRepository(private val context: Context) {
             Log.e(TAG, "send threw", it)
             status = "Sending failed: ${it.message}"
         }
+    }
+
+    /**
+     * Sends a plain string to the watch app, with no plan semantics. Used to
+     * prove the channel on its own: if the watch shows this text, delivery works
+     * and anything that fails afterwards is parsing, not transport.
+     */
+    fun sendText(deviceId: Long, text: String) {
+        val ciq = connectIQ ?: return
+        val device = runCatching {
+            ciq.knownDevices.firstOrNull { it.deviceIdentifier == deviceId }
+        }.getOrNull()
+
+        if (device == null) {
+            status = "That watch is no longer known to Garmin Connect."
+            return
+        }
+
+        runCatching {
+            ciq.registerForEvents(
+                device,
+                object : ConnectIQ.IQDeviceEventListener {
+                    override fun onDeviceStatusChanged(
+                        changed: IQDevice,
+                        status: IQDevice.IQDeviceStatus
+                    ) {
+                        Log.d(TAG, "device status: $status")
+                    }
+                },
+                app,
+                object : ConnectIQ.IQApplicationEventListener {
+                    override fun onMessageReceived(
+                        from: IQDevice,
+                        app: IQApp,
+                        messages: List<Any>,
+                        messageStatus: ConnectIQ.IQMessageStatus
+                    ) {
+                        Log.d(TAG, "message received: $messages ($messageStatus)")
+                        lastReceived = messages.map { it.toString() }
+                    }
+                }
+            )
+
+            Log.d(TAG, "sending text: $text")
+            ciq.sendMessage(device, app, text, object : ConnectIQ.IQSendMessageListener {
+                override fun onMessageStatus(
+                    to: IQDevice,
+                    app: IQApp,
+                    messageStatus: ConnectIQ.IQMessageStatus
+                ) {
+                    Log.d(TAG, "send status: $messageStatus")
+                    status = "Test message: $messageStatus"
+                }
+            })
+        }.onFailure {
+            Log.e(TAG, "sendText threw", it)
+            status = "Sending failed: ${it.message}"
+        }
+    }
+
+    /**
+     * Size probe. Sends "L<declared>:<payload>" so the watch can report the length
+     * it actually received against the length that was sent. That distinguishes
+     * truncation from a parse failure without any parsing being involved.
+     */
+    fun sendSizeTest(deviceId: Long, size: Int) {
+        val body = "x".repeat(size)
+        sendText(deviceId, "L${size}:$body")
     }
 
     private companion object {

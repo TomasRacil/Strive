@@ -63,6 +63,9 @@ class BleSyncServer private constructor(private val context: Context) {
     private val connected = linkedSetOf<String>()
     private val notificationsOn = linkedSetOf<String>()
 
+    /** Reassembly buffer for the watch's chunked session log. */
+    private val logStream = StringBuilder()
+
     // ---- lifecycle -------------------------------------------------------
 
     fun start() {
@@ -308,18 +311,22 @@ class BleSyncServer private constructor(private val context: Context) {
     // ---- GATT service ----------------------------------------------------
 
     private fun buildService(): BluetoothGattService {
-        // Plain READ / WRITE permissions, no encryption or authentication bits:
-        // the watch connects and exchanges values with no pairing prompt.
+        // Encrypted permissions on purpose. The watch refuses to use a link it
+        // considers unencrypted - it says so on screen - and a peripheral that
+        // declares no security never gives it the chance: the phone has to send
+        // the security request that starts the bond. With these flags the first
+        // read triggers pairing, the watch shows its confirm prompt, and every
+        // later connection is already encrypted and needs no prompt at all.
         val plan = BluetoothGattCharacteristic(
             PLAN_CHAR_UUID,
             BluetoothGattCharacteristic.PROPERTY_READ,
-            BluetoothGattCharacteristic.PERMISSION_READ
+            BluetoothGattCharacteristic.PERMISSION_READ_ENCRYPTED
         )
 
         val log = BluetoothGattCharacteristic(
             LOG_CHAR_UUID,
             BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-            BluetoothGattCharacteristic.PERMISSION_WRITE
+            BluetoothGattCharacteristic.PERMISSION_WRITE_ENCRYPTED
         )
         log.addDescriptor(
             BluetoothGattDescriptor(
@@ -341,6 +348,9 @@ class BleSyncServer private constructor(private val context: Context) {
             Log.d(TAG, "onConnectionStateChange $address status=$status state=${stateName(newState)}")
 
             if (newState == BluetoothProfile.STATE_CONNECTED) {
+                // A new link starts a new stream; a half-received log from a
+                // previous connection must not be glued onto this one.
+                logStream.setLength(0)
                 connected.add(address)
                 connectedDeviceCount = connected.size
                 statusText = "Watch connected ($address)"
@@ -402,8 +412,23 @@ class BleSyncServer private constructor(private val context: Context) {
             )
 
             if (characteristic.uuid == LOG_CHAR_UUID) {
-                lastLogValue = text
-                statusText = "Watch wrote: $text"
+                // The watch cannot write more than 20 bytes at a time and the SDK
+                // has no long writes, so a finished session arrives as a stream
+                // of chunks closed by a zero-length write. Reassembly is what
+                // turns that back into one log; without it only the last chunk
+                // survives.
+                val chunk = text
+                if (chunk.isEmpty()) {
+                    val full = logStream.toString()
+                    logStream.setLength(0)
+                    lastLogValue = full
+                    statusText = "Watch sent a session log (${full.length} bytes)"
+                    Log.i(TAG, "LOG STREAM COMPLETE bytes=${full.length} body=$full")
+                } else {
+                    logStream.append(chunk)
+                    statusText = "Receiving log… ${logStream.length} bytes"
+                    Log.d(TAG, "log chunk +${chunk.length} (total ${logStream.length})")
+                }
             }
 
             if (responseNeeded) {

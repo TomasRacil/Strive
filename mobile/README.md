@@ -57,10 +57,23 @@ The application id in `STRIVE_APP_ID` must match `iq:application id` in
 
 ### Not yet done
 
-- **Sets do not flow back from the watch.** `Communications.transmit` on the
-  watch side has a stricter signature than the docs suggest (its third argument
-  is a `ConnectionListener`, and the payload dictionary must match
-  `TransmitType`). That needs a device to test against, so it is deliberately
-  left out rather than guessed at.
+- **Nothing flows back automatically yet.** The channel is proven in both
+  directions (see below), but the watch currently sends only a test message; the
+  session log is not wired to it.
 - Nothing here has been run on a physical device or watch yet. It compiles and
   packages; runtime behaviour is unverified.
+
+### What is verified
+
+Measured on a fenix 8 47mm + Pixel 9 Pro with `ciq-companion-app-sdk` 2.2.0, with
+the watch paired as normal:
+
+- **Phone → watch:** `sendMessage` returns `SUCCESS`, the watch's
+  `onPhoneAppMessage` fires, and the payload drives the screen immediately (a
+  planned weight appeared as 27.5 kg).
+- **Watch → phone:** `Comm.transmit` from the watch arrives in
+  `IQApplicationEventListener.onMessageReceived` within a second.
+
+So `CIQQA-4631` (the message bus "accepts and never delivers") does not apply on
+this firmware. Direct BLE was abandoned for this reason: it needs the watch's
+Garmin Connect link torn down first, i.e. unpairing the phone before every sync.

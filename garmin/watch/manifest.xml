@@ -26,6 +26,9 @@
       <!-- Direct BLE to the phone, bypassing Garmin Connect entirely. The watch
            is the central (client); the phone runs the GATT server. -->
       <iq:uses-permission id="BluetoothLowEnergy"/>
+      <!-- Heart rate for rest timing: the compiler refuses Toybox.Sensor without
+           it, and the rest clock reads the strap while the set is being done. -->
+      <iq:uses-permission id="Sensor"/>
     </iq:permissions>
 
     <iq:languages>

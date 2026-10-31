@@ -1,6 +1,8 @@
 using Toybox.WatchUi as Ui;
-using Toybox.System as Sys;
 
+// Input for the training screen. Buttons are first-class: gloves and sweaty hands
+// make the touchscreen unreliable exactly when a set needs logging. BACK is left
+// to the system so the app can always be exited.
 class StriveDelegate extends Ui.InputDelegate {
 
     var view;
@@ -10,9 +12,6 @@ class StriveDelegate extends Ui.InputDelegate {
         view = targetView;
     }
 
-    // BACK is deliberately not intercepted: it must exit the app like every
-    // other watch app, otherwise there is no discoverable way out. Exercise
-    // navigation lives on swipes.
     function onKey(evt) {
         var key = evt.getKey();
 
@@ -40,20 +39,18 @@ class StriveDelegate extends Ui.InputDelegate {
         return false;
     }
 
-    // Touch: left third decreases, right third increases, middle opens the
-    // weight wheel for an exact number. Buttons stay first-class because sweaty
-    // hands and gloves make the screen unreliable exactly when logging a set.
+    // Touch: left third decreases, right third increases.
     function onTap(evt) {
         var coords = evt.getCoordinates();
         var x = coords[0];
-        var width = Sys.getDeviceSettings().screenWidth;
+        var width = Toybox.System.getDeviceSettings().screenWidth;
 
         if (x < width / 3) {
             view.adjustWeight(-2.5);
         } else if (x > (width * 2) / 3) {
             view.adjustWeight(2.5);
         } else {
-            view.openWeightPicker();
+            view.logSet();
         }
 
         return true;
@@ -75,6 +72,13 @@ class StriveDelegate extends Ui.InputDelegate {
 
         if (direction == Ui.SWIPE_RIGHT) {
             view.previousExercise();
+            return true;
+        }
+
+        // Finishing is armed by the first downward swipe and confirmed by the
+        // second, so a wet screen cannot end a session by accident.
+        if (direction == Ui.SWIPE_DOWN) {
+            view.requestFinish();
             return true;
         }
 

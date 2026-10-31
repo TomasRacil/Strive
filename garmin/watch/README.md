@@ -1,12 +1,15 @@
 # Strive watch app (Connect IQ / Monkey C)
 
-> **Status: does not work on fenix 8 (firmware 23.40).** Sideloaded apps install,
-> run once from the install notification, and never register in the app list.
-> Garmin's own RecordSample behaves identically, so this is not an app defect.
-> Garmin support has stated sideloading is not a supported loading method and was
-> likely removed with Garmin Connect 5.0. Distribution requires publishing to the
-> Connect IQ Store. The code below is kept because it compiles and runs; it is
-> only the install path that is closed.
+> **Status: sideloading works on fenix 8 (firmware 23.40).** The earlier note in
+> this file claiming otherwise was wrong: the app was being looked for in the
+> wrong menu. Copy the `.prg` into `Internal Storage\GARMIN\Apps`, restart the
+> watch (Connect IQ apps are indexed at boot), then scroll to the **end of the
+> activity list** — the list opened with the top-right button from the watch face.
+> There is no separate "apps" menu, and nothing is removed from the folder.
+>
+> Verified repeatedly: the file that lands in `GARMIN\Apps` can be copied back and
+> hash-matched against the build, and the running build is identified by the tag
+> drawn on screen (currently `c1`). No store upload is needed to test.
 
 A sideloaded watch app that puts the *recommended* weight on your wrist and logs
 sets without a phone.
@@ -89,6 +92,20 @@ product is silently ignored and removed from `GARMIN\Apps`. Get the id from the
 watch itself: `GARMIN\GarminDevice.xml` contains the part number (for example
 `006-B4536-00`), and the matching folder under
 `%APPDATA%\Garmin\ConnectIQ\Devices\` is the device id.
+
+## Known issues (next session starts here)
+
+- **Pips do not fill / `setsFor()` returns 0.** The session log itself is fine —
+  `Session.setCount()` reached 5 in an earlier build, so `entries()` parses — but
+  `Session.setsFor(id)` matches nothing. The suspect is
+  `all[i][:id] == id`: comparing two Strings that came out of a Dictionary with
+  `==`. Try `.equals()` or compare lengths before the value, and check that the id
+  written by `Session.addSet` (from `Exercises.list()[:id]`) is the same string
+  object path as the one read back from storage.
+- The phone does not yet import a received session log into history; it displays
+  it on the Settings card only.
+- Plan payload is still `id=weight;id=weight`. The bus carries Dictionaries, so
+  this can be replaced by a Map and the delimited parser deleted.
 
 ## Layout
 

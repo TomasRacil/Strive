@@ -2,26 +2,40 @@ using Toybox.WatchUi as Ui;
 using Toybox.Graphics as Gfx;
 using Toybox.Timer as Timer;
 using Toybox.Attention as Attention;
-using Toybox.Communications as Comm;
 using Toybox.Application as App;
+using Toybox.Time as Time;
 using Toybox.Lang;
 
-// One screen per exercise: the recommended load, the target reps, how many sets
-// you have logged this session, and a rest countdown between sets.
+// The training screen: one lift at a time, with the load the phone recommends,
+// the rep target, and the sets banked this session.
+//
+// The plan arrives over the companion message bus (phone -> watch) and the
+// finished session leaves the same way, so nothing here touches Bluetooth
+// directly. Session state lives in Session.mc and is written on every set, so a
+// killed app resumes rather than losing the workout.
 class StriveView extends Ui.View {
+
+    // Bumped by hand on every build that goes to the watch.
+    const BUILD_TAG = "t1";
+
+    const TARGET_SETS = 3;
 
     var index;
     var weight;
-    var sets;
-    var restRemaining;   // seconds left, 0 when not resting
+    var reps;
+    var restRemaining;
+    var restAlerted;
+    var finishArmed;
     var timer;
 
     function initialize() {
         View.initialize();
-        index = 0;
-        sets = 0;
+        index = Session.active() ? Session.index() : 0;
         weight = 20.0;
+        reps = 8;
         restRemaining = 0;
+        restAlerted = false;
+        finishArmed = 0;
         timer = null;
         loadExercise();
     }
@@ -32,24 +46,79 @@ class StriveView extends Ui.View {
 
     function loadExercise() {
         var exercise = currentExercise();
-        // A weight pushed from the phone wins over the watch's own guess: the
-        // phone has the whole history behind it, the watch only its own record.
+        // A weight from the phone wins: it has the whole history behind it.
         var planned = Plan.weightFor(exercise[:id]);
         if (planned != null) {
             weight = planned;
         } else {
             weight = Progress.suggest(exercise[:id], 20.0);
         }
-        sets = 0;
+        reps = exercise[:reps];
         stopRest();
     }
 
+    // Called when a plan message lands, so the screen reflects it without a
+    // restart.
     function reloadFromPlan() {
         var planned = Plan.weightFor(currentExercise()[:id]);
         if (planned != null) {
             weight = planned;
         }
+        Ui.requestUpdate();
     }
+
+    function setsLogged() {
+        return Session.setsFor(currentExercise()[:id]);
+    }
+
+    // ---- session ---------------------------------------------------------
+
+    function startSession() {
+        Session.start();
+        Session.setIndex(index);
+        Ui.requestUpdate();
+    }
+
+    function logSet() {
+        // First press starts the session; the set itself is the next press, so a
+        // stray tap cannot bank work that was not done.
+        if (!Session.active()) {
+            startSession();
+            return;
+        }
+
+        var exercise = currentExercise();
+        Session.addSet(exercise[:id], weight, reps);
+        Progress.record(exercise[:id], weight, setsLogged() >= TARGET_SETS);
+        startRest(exercise[:rest]);
+    }
+
+    function requestFinish() {
+        if (!Session.active()) {
+            return;
+        }
+
+        var now = Time.now().value();
+        if (finishArmed > 0 && now - finishArmed <= 5) {
+            finishArmed = 0;
+            finishSession();
+            return;
+        }
+
+        finishArmed = now;
+        Ui.requestUpdate();
+    }
+
+    function finishSession() {
+        var summary = Session.summary();
+        // One message, one payload: the log is a snapshot, so a resend is
+        // harmless and the phone can ignore duplicates.
+        StriveApp.syncLog(summary[:log]);
+        Session.end();
+        Ui.pushView(new SummaryView(summary), new SummaryDelegate(), Ui.SLIDE_LEFT);
+    }
+
+    // ---- load ------------------------------------------------------------
 
     function adjustWeight(delta) {
         weight = weight + delta;
@@ -59,17 +128,7 @@ class StriveView extends Ui.View {
         Ui.requestUpdate();
     }
 
-    function setWeight(value) {
-        weight = value.toFloat();
-        if (weight < 0.0) {
-            weight = 0.0;
-        }
-        Ui.requestUpdate();
-    }
-
-    function openWeightPicker() {
-        Ui.pushView(new WeightPicker(weight), new WeightPickerDelegate(self), Ui.SLIDE_IMMEDIATE);
-    }
+    // ---- rest ------------------------------------------------------------
 
     function isResting() {
         return restRemaining > 0;
@@ -77,11 +136,19 @@ class StriveView extends Ui.View {
 
     function startRest(seconds) {
         restRemaining = seconds;
+        restAlerted = false;
+        scheduleRestTick();
+        Ui.requestUpdate();
+    }
+
+    // One-shot per second. A repeating timer whose stop() lands in its own
+    // callback keeps firing, which makes restRemaining negative and re-buzzes
+    // every second until the watch appears frozen.
+    function scheduleRestTick() {
         if (timer == null) {
             timer = new Timer.Timer();
         }
-        timer.start(method(:onRestTick), 1000, true);
-        Ui.requestUpdate();
+        timer.start(method(:onRestTick), 1000, false);
     }
 
     function stopRest() {
@@ -100,14 +167,20 @@ class StriveView extends Ui.View {
         if (restRemaining > 0) {
             restRemaining = restRemaining - 1;
         }
+
         if (restRemaining <= 0) {
-            stopRest();
-            buzz();
+            if (!restAlerted) {
+                restAlerted = true;
+                stopRest();
+                buzz();
+            }
+        } else {
+            scheduleRestTick();
         }
+
         Ui.requestUpdate();
     }
 
-    // Rest is over: two short pulses, felt through a shirt and a strap.
     function buzz() {
         if (Attention has :vibrate) {
             Attention.vibrate([
@@ -118,136 +191,183 @@ class StriveView extends Ui.View {
         }
     }
 
-    // A running timer must not keep firing while the app is in the background.
-    function onHide() {
-        if (timer != null) {
-            timer.stop();
-        }
-    }
-
-    function onShow() {
-        if (restRemaining > 0 && timer != null) {
-            timer.start(method(:onRestTick), 1000, true);
-        }
-        // Re-arm the BLE scan now that the view is really on screen.
-        StriveApp.resumeBle();
-        Ui.requestUpdate();
-    }
-
-    function restText() {
-        var minutes = restRemaining / 60;
-        var seconds = restRemaining % 60;
-        var pad = seconds < 10 ? "0" : "";
-        return minutes.toString() + ":" + pad + seconds.toString();
-    }
-
-    function logSet() {
-        var exercise = currentExercise();
-        sets = sets + 1;
-        // Completing the target number of sets is what earns the load increase
-        // next session. Editing reps on the wrist is not worth the button presses.
-        var completed = sets >= 3;
-        Progress.record(exercise[:id], weight, completed);
-        startRest(exercise[:rest]);
-    }
+    // ---- exercises -------------------------------------------------------
 
     function nextExercise() {
         index = (index + 1) % Exercises.count();
+        Session.setIndex(index);
         loadExercise();
         Ui.requestUpdate();
     }
 
     function previousExercise() {
         index = (index - 1 + Exercises.count()) % Exercises.count();
+        Session.setIndex(index);
         loadExercise();
         Ui.requestUpdate();
+    }
+
+    function onShow() {
+        if (restRemaining > 0) {
+            scheduleRestTick();
+        }
+        reloadFromPlan();
+    }
+
+    function onHide() {
+        if (timer != null) {
+            timer.stop();
+        }
+    }
+
+    // ---- drawing ---------------------------------------------------------
+
+    function clockText(seconds) {
+        var minutes = seconds / 60;
+        var secs = seconds % 60;
+        var pad = secs < 10 ? "0" : "";
+        return minutes.toString() + ":" + pad + secs.toString();
+    }
+
+    function nameText(name) {
+        // FONT_SMALL is wide on a round face; the long exercise names lose their
+        // ends otherwise.
+        var text = name.toString();
+        return text.length() > 12 ? text.substring(0, 12) : text;
     }
 
     function onUpdate(dc) {
         var width = dc.getWidth();
         var height = dc.getHeight();
-        var exercise = currentExercise();
 
         dc.setColor(Gfx.COLOR_BLACK, Gfx.COLOR_BLACK);
         dc.clear();
 
         dc.setColor(Gfx.COLOR_WHITE, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, height * 0.10, Gfx.FONT_SMALL, exercise[:name], Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(width / 2, height * 0.075, Gfx.FONT_SMALL, nameText(currentExercise()[:name]), Gfx.TEXT_JUSTIFY_CENTER);
 
-        if (isResting()) {
-            dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
-            dc.drawText(width / 2, height * 0.30, Gfx.FONT_TINY, "REST", Gfx.TEXT_JUSTIFY_CENTER);
+        dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(
+            width / 2,
+            height * 0.165,
+            Gfx.FONT_XTINY,
+            (index + 1).toString() + "/" + Exercises.count().toString() + "  " + clockText(Session.elapsedSeconds()),
+            Gfx.TEXT_JUSTIFY_CENTER
+        );
 
-            dc.setColor(Gfx.COLOR_GREEN, Gfx.COLOR_TRANSPARENT);
-            dc.drawText(width / 2, height * 0.42, Gfx.FONT_LARGE, restText(), Gfx.TEXT_JUSTIFY_CENTER);
-
-            dc.setColor(Gfx.COLOR_LT_GRAY, Gfx.COLOR_TRANSPARENT);
-            dc.drawText(width / 2, height * 0.64, Gfx.FONT_SMALL, weight.format("%.1f") + " kg", Gfx.TEXT_JUSTIFY_CENTER);
-            dc.drawText(width / 2, height * 0.72, Gfx.FONT_TINY, "sets " + sets.toString(), Gfx.TEXT_JUSTIFY_CENTER);
-
-            dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
-            dc.drawText(width / 2, height * 0.80, Gfx.FONT_XTINY, "start: skip rest", Gfx.TEXT_JUSTIFY_CENTER);
-
-            drawBleLine(dc, width, height);
+        if (!Session.active()) {
+            drawIdle(dc, width, height);
             return;
         }
 
+        if (isResting()) {
+            drawRest(dc, width, height);
+        } else {
+            drawWorking(dc, width, height);
+        }
+
+        drawPips(dc, width, height);
+        drawBusLine(dc, width, height);
+    }
+
+    function drawIdle(dc, width, height) {
         dc.setColor(Gfx.COLOR_BLUE, Gfx.COLOR_TRANSPARENT);
         dc.drawText(width / 2, height * 0.34, Gfx.FONT_LARGE, weight.format("%.1f"), Gfx.TEXT_JUSTIFY_CENTER);
 
         dc.setColor(Gfx.COLOR_LT_GRAY, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, height * 0.58, Gfx.FONT_SMALL, "kg", Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(width / 2, height * 0.47, Gfx.FONT_TINY, "kg", Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(width / 2, height * 0.58, Gfx.FONT_TINY, reps.toString() + " reps", Gfx.TEXT_JUSTIFY_CENTER);
+
+        dc.setColor(Gfx.COLOR_GREEN, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(width / 2, height * 0.70, Gfx.FONT_XTINY, "START to begin", Gfx.TEXT_JUSTIFY_CENTER);
+
+        drawBusLine(dc, width, height);
+    }
+
+    function drawWorking(dc, width, height) {
+        dc.setColor(Gfx.COLOR_BLUE, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(width / 2, height * 0.32, Gfx.FONT_LARGE, weight.format("%.1f"), Gfx.TEXT_JUSTIFY_CENTER);
+
+        dc.setColor(Gfx.COLOR_LT_GRAY, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(width / 2, height * 0.45, Gfx.FONT_TINY, "kg", Gfx.TEXT_JUSTIFY_CENTER);
+
+        dc.setColor(Gfx.COLOR_WHITE, Gfx.COLOR_TRANSPARENT);
         dc.drawText(
             width / 2,
-            height * 0.74,
+            height * 0.55,
             Gfx.FONT_TINY,
-            exercise[:reps].toString() + " reps   sets " + sets.toString(),
+            reps.toString() + " x " + setsLogged().toString() + "/" + TARGET_SETS.toString(),
             Gfx.TEXT_JUSTIFY_CENTER
         );
 
         dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, height * 0.80, Gfx.FONT_XTINY, "swipe: change lift", Gfx.TEXT_JUSTIFY_CENTER);
-
-        drawBleLine(dc, width, height);
-
-        // The web probes and message counters have served their purpose; only the
-        // BLE state earns screen space now.
+        dc.drawText(width / 2, height * 0.74, Gfx.FONT_XTINY, finishHint(), Gfx.TEXT_JUSTIFY_CENTER);
     }
 
-    // Direct BLE to the phone app. The status comes from BleClient; the two
-    // counters are "advertisements seen" / "advertisements carrying our service",
-    // which separates a blind radio from a UUID mismatch.
-    function drawBleLine(dc, width, height) {
+    function drawRest(dc, width, height) {
         dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, height * 0.845, Gfx.FONT_XTINY,
-            "ble " + bleText() + " " + counter("ble_n") + "/" + counter("ble_m"),
-            Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(width / 2, height * 0.28, Gfx.FONT_TINY, "REST", Gfx.TEXT_JUSTIFY_CENTER);
+
+        dc.setColor(Gfx.COLOR_GREEN, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(width / 2, height * 0.40, Gfx.FONT_LARGE, clockText(restRemaining), Gfx.TEXT_JUSTIFY_CENTER);
+
+        dc.setColor(Gfx.COLOR_LT_GRAY, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(
+            width / 2,
+            height * 0.55,
+            Gfx.FONT_TINY,
+            weight.format("%.1f") + " kg " + reps.toString() + "r",
+            Gfx.TEXT_JUSTIFY_CENTER
+        );
+
+        dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(width / 2, height * 0.74, Gfx.FONT_XTINY, "START: skip", Gfx.TEXT_JUSTIFY_CENTER);
     }
 
-    function counter(key) as Lang.String {
-        var value = App.Storage.getValue(key);
-        if (value == null) {
-            return "0";
+    function finishHint() {
+        if (finishArmed > 0 && Time.now().value() - finishArmed <= 5) {
+            return "swipe again";
         }
-        return value.toString();
+        return "swipe down";
     }
 
-    function bleText() as Lang.String {
-        var text = App.Storage.getValue("ble_status");
+    // One pip per target set: filled means banked.
+    function drawPips(dc, width, height) {
+        var done = setsLogged();
+        var spacing = width * 0.075;
+        var radius = width * 0.018;
+        var y = height * 0.65;
+        var startX = (width / 2) - (spacing * (TARGET_SETS - 1)) / 2;
+
+        for (var i = 0; i < TARGET_SETS; i++) {
+            var x = startX + spacing * i;
+            if (i < done) {
+                dc.setColor(Gfx.COLOR_GREEN, Gfx.COLOR_TRANSPARENT);
+                dc.fillCircle(x, y, radius);
+            } else {
+                dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
+                dc.drawCircle(x, y, radius);
+            }
+        }
+    }
+
+    // One short line for the message bus, and only what a glance needs: the last
+    // thing the phone sent, or the build tag when nothing has arrived.
+    function drawBusLine(dc, width, height) {
+        dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(width / 2, height * 0.86, Gfx.FONT_XTINY, busText(), Gfx.TEXT_JUSTIFY_CENTER);
+    }
+
+    function busText() as Lang.String {
+        var text = App.Storage.getValue("ble_dbg");
         if (text == null) {
-            return "-";
+            return BUILD_TAG;
         }
-        return text.toString();
-    }
 
-    // Result of an HTTPS probe: an HTTP status code means the watch can reach a
-    // server, which is a data channel that does not use the broken Garmin
-    // companion message bus. "-" means that request has not answered yet.
-    function probeText(key) as Lang.String {
-        var code = App.Storage.getValue(key);
-        if (code == null) {
-            return "-";
+        var value = text.toString();
+        if (value.length() > 16) {
+            return value.substring(0, 16);
         }
-        return code.toString();
+        return value;
     }
 }

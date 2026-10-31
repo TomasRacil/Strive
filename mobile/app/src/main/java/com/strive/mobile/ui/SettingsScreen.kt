@@ -228,8 +228,10 @@ private fun WatchCard(state: AppState, watch: WatchRepository, t: (String) -> St
 
             Button(
                 onClick = {
+                    // initialize() is asynchronous and the SDK is not callable
+                    // until it returns; the refresh happens from onSdkReady (or
+                    // immediately when the SDK was already up).
                     watch.initialize()
-                    watch.refreshDevices()
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -281,6 +283,33 @@ private fun WatchCard(state: AppState, watch: WatchRepository, t: (String) -> St
                 ) {
                     Text("Open Strive on the watch", fontSize = 12.sp)
                 }
+
+                OutlinedButton(
+                    enabled = device.connected,
+                    onClick = {
+                        watch.sendText(device.id, "ping " + System.currentTimeMillis() / 1000)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Send test message", fontSize = 12.sp)
+                }
+
+                // Payload size probe: the watch reports received length against the
+                // declared length, so truncation is visible on its own.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(200, 1000, 4000).forEach { size ->
+                        OutlinedButton(
+                            enabled = device.connected,
+                            onClick = { watch.sendSizeTest(device.id, size) },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("$size", fontSize = 11.sp)
+                        }
+                    }
+                }
             }
 
             if (watch.status.isNotBlank()) {
@@ -303,6 +332,16 @@ private fun WatchCard(state: AppState, watch: WatchRepository, t: (String) -> St
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            // The watch -> phone direction. Showing it here is the only way to
+            // see that a finished session actually arrived.
+            if (watch.lastReceived.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text("Last message from the watch:", fontSize = 11.sp)
+                watch.lastReceived.forEach { line ->
+                    Text(line, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                }
             }
         }
     }

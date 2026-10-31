@@ -14,10 +14,19 @@ android {
         targetSdk 36
         versionCode 1
         versionName "2.0.0"
+
+        // The Connect IQ simulator talks to a companion app over
+        // `adb forward tcp:7381 tcp:7381`, which only works when the SDK listens
+        // on that port - that is TETHERED mode. Build with
+        // `-PciqTethered=true` for simulator work; the default stays WIRELESS so
+        // a normal build keeps talking to a real watch via Garmin Connect.
+        buildConfigField "boolean", "CIQ_TETHERED",
+            (project.hasProperty("ciqTethered") ? "true" : "false")
     }
 
     buildFeatures {
         compose true
+        buildConfig true
     }
 
     compileOptions {

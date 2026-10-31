@@ -1,46 +1,44 @@
 using Toybox.Application as App;
 using Toybox.WatchUi as Ui;
 using Toybox.Communications as Comm;
+using Toybox.Timer as Timer;
 using Toybox.Lang;
 
 class StriveApp extends App.AppBase {
 
     var view;
-    static var ble;
 
-    // Connect IQ may only honour a scan request once the view is actually on
-    // screen, so the view calls back here from onShow rather than relying on
-    // onStart alone.
-    static function resumeBle() as Void {
-        if (ble != null) {
-            ble.start();
-        }
+    // Outbound queue, owned by an instance: Monkey C cannot take a method
+    // reference from a static function, so the pacing timer needs an object.
+    static var outbox = new Outbox();
+
+    static function enqueue(text) as Void {
+        outbox.enqueue(text);
+    }
+
+    static function onSent() as Void {
+        outbox.onSent();
+    }
+
+    // Hands the finished session's log to the outbox. One message, queued and
+    // paced: the bus drops bursts silently, and a lost log is a lost workout.
+    static function syncLog(text) as Void {
+        outbox.enqueue(text);
     }
 
     function initialize() {
         AppBase.initialize();
         view = null;
-        ble = null;
     }
 
     function getInitialView() {
         view = new StriveView();
-        // The BLE client needs the view so it can trigger a redraw when a
-        // connection or a read lands while the screen is idle.
-        ble = new BleClient(view);
         return [ view, new StriveDelegate(view) ];
     }
 
     function onStart(state) {
         Comm.registerForPhoneAppMessages(method(:onPhoneAppMessage));
-        // Proves the channel in the other direction: if the phone logs this, the
-        // watch can reach it and only sendMessage is at fault.
-        sendToPhone("hello-from-watch");
         probeNetwork();
-        // The real transport: central-role BLE straight to the phone app.
-        if (ble != null) {
-            ble.start();
-        }
     }
 
     // Decisive experiment for sync. Garmin Connect's companion message bus is
@@ -96,14 +94,38 @@ class StriveApp extends App.AppBase {
         }
 
         if (data instanceof Lang.String) {
+            var text = data;
+
+            // Size probe: "L<declared>:<payload>". The watch reports what actually
+            // arrived against what was declared, so truncation is visible instead
+            // of being mistaken for a parse failure.
+            if (text.find("L") == 0) {
+                var parts = Text.split(text, ":");
+                if (parts.size() == 2) {
+                    var declared = parts[0].substring(1, parts[0].length());
+                    App.Storage.setValue(
+                        "ble_dbg",
+                        "rx " + parts[1].length().toString() + "/" + declared
+                    );
+                }
+            } else {
+                App.Storage.setValue(
+                    "ble_dbg",
+                    "msg " + (text.length() > 12 ? text.substring(0, 12) : text)
+                );
+            }
+
             Plan.replaceFromText(data);
         } else if (data instanceof Lang.Dictionary) {
+            App.Storage.setValue("ble_dbg", "msg dict");
             Plan.replaceFromDictionary(data);
         } else {
             return;
         }
 
         if (view != null) {
+            // A plan can change the load on screen, so the view re-reads it
+            // rather than waiting for the next launch.
             view.reloadFromPlan();
             Ui.requestUpdate();
         }
@@ -117,10 +139,14 @@ class PhoneListener extends Comm.ConnectionListener {
         ConnectionListener.initialize();
     }
 
+    // Both outcomes release the outbox: a failed send must not stop the queue,
+    // and success is the signal that the next message may go.
     function onComplete() as Void {
+        StriveApp.onSent();
     }
 
     function onError() as Void {
+        StriveApp.onSent();
     }
 
     function onResponse(responseCode as Lang.Number, data) as Void {
