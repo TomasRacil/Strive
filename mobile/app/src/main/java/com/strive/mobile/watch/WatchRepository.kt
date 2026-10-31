@@ -65,6 +65,7 @@ class WatchRepository(private val context: Context) {
     private var lastPlan: JSONObject? = null
     private var lastRec: JSONObject? = null
     private var lastHistory: JSONObject? = null
+    private var lastLib: JSONObject? = null
     private var lastPlanVersion: Long = 0
 
     /**
@@ -363,6 +364,13 @@ class WatchRepository(private val context: Context) {
         val plan = planPayload(items)
         val rec = recommendationPayload(items)
         val history = historyPayload()
+        // The plan's exercises are only half the story: without the library the
+        // watch has no muscle shares and no bodyweight fraction for them, so it
+        // ranks blind and prices a calisthenics set at 0 kg. The library travels
+        // with the plan for that reason, and an empty store sends nothing - an
+        // empty `lib` would replace the watch's compiled fallback with nothing.
+        val library = store.loadExercises().orEmpty().takeIf { it.isNotEmpty() }
+            ?.let { LibraryPayload.of(it, System.currentTimeMillis() / 1000) }
 
         // Remembered so a `ready` from a watch that lost them can be answered
         // without the user sending the plan again.
@@ -370,9 +378,11 @@ class WatchRepository(private val context: Context) {
         lastRec = rec
         lastHistory = history
         lastPlanVersion = plan.optLong("v")
+        if (library != null) lastLib = library
 
         val planId = bus.sendSnapshot("plan", plan)
         val recId = bus.sendSnapshot("rec", rec)
+        if (library != null) bus.sendSnapshot("lib", library)
         bus.sendSnapshot("hist", history)
         bus.tick()
 
@@ -530,12 +540,12 @@ class WatchRepository(private val context: Context) {
     }
 
     /**
-     * What the phone holds, in the versions `ready` reports. The library snapshot
-     * is not built yet, so its version stays at zero and a `lib` re-send is never
-     * asked for.
+     * What the phone holds, in the versions `ready` reports. A library version of
+     * zero means no library has been sent yet, which is what stops a `ready`
+     * from asking for a snapshot that was never built.
      */
     private fun heldSnapshots() = WatchInbox.Held(
-        libVersion = 0,
+        libVersion = lastLib?.optLong("v") ?: 0L,
         planVersion = lastPlanVersion,
         hasHistory = lastHistory != null
     )
@@ -543,6 +553,7 @@ class WatchRepository(private val context: Context) {
     /** Re-sends one snapshot the watch said it is behind on. */
     private fun resendSnapshot(kind: String) {
         val payload = when (kind) {
+            "lib" -> lastLib
             "plan" -> lastPlan
             "rec" -> lastRec
             "hist" -> lastHistory

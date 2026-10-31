@@ -92,15 +92,18 @@ data class EngineSpec(
         )
 
         /**
-         * Share of body mass the exercise moves, straight from the table above:
-         * 1.0 for a pull-up, 0 for anything loaded with plates.
+         * Share of body mass the exercise moves: the entry's own fraction when
+         * the user set one (a calisthenics movement they added), else the table
+         * above, else 0 - 1.0 for a pull-up, 0 for anything loaded with plates.
          *
-         * Session volume needs this and nothing else from a spec, and the table
-         * is the only place a fraction is declared - a second copy in the volume
-         * maths would drift from the one the engine progresses with.
+         * Session volume, the progression maths and the `lib` payload all read
+         * this one function, so a fraction declared on an exercise cannot
+         * disagree with the fraction the watch is told.
          */
         fun bodyweightFraction(exercise: Exercise): Double =
-            DEFAULTS[exercise.id]?.bodyweightFraction ?: 0.0
+            exercise.bodyweightFraction
+                ?: DEFAULTS[exercise.id]?.bodyweightFraction
+                ?: 0.0
 
         /**
          * Builds a spec from a library entry.
@@ -123,7 +126,7 @@ data class EngineSpec(
                 primary = exercise.primary,
                 secondary = exercise.secondary,
                 pattern = known?.pattern ?: "",
-                bodyweightFraction = known?.bodyweightFraction ?: 0.0
+                bodyweightFraction = bodyweightFraction(exercise)
             )
         }
     }

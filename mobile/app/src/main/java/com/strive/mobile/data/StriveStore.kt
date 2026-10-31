@@ -59,6 +59,9 @@ class StriveStore(context: Context) {
                     description = o.optString("description", ""),
                     primary = readWeights(o.optJSONObject("primary")),
                     secondary = readWeights(o.optJSONObject("secondary")),
+                    // Absent means "not set by the user", which is not the same
+                    // as 0: the shipped table still supplies a pull-up's 1.0.
+                    bodyweightFraction = if (o.has("bw")) o.optDouble("bw", 0.0) else null,
                     variations = readVariations(o.optJSONArray("variations"))
                 )
             }
@@ -78,6 +81,9 @@ class StriveStore(context: Context) {
                 .put("primary", writeWeights(e.primary))
                 .put("secondary", writeWeights(e.secondary))
                 .put("variations", writeVariations(e.variations))
+            // Only when the user set one: a stored 0.0 would read back as an
+            // explicit "this is a loaded lift" and shadow the shipped table.
+            e.bodyweightFraction?.let { o.put("bw", it) }
             arr.put(o)
         }
         prefs.edit().putString(KEY_EXERCISES, arr.toString()).apply()
