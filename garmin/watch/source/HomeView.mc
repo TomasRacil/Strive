@@ -19,7 +19,11 @@ class HomeView extends Ui.View {
 
     function open() as Void {
         loop.start();
-        Ui.pushView(new PickerView(loop), new PickerDelegate(loop), Ui.SLIDE_LEFT);
+        // The delegate needs the VIEW, not the loop: it forwards keypresses to
+        // the screen, and a loop has no move()/take(). Passing the loop was the
+        // crash - every keypress on this screen was a missing symbol.
+        var picker = new PickerView(loop);
+        Ui.pushView(picker, new PickerDelegate(picker), Ui.SLIDE_LEFT);
     }
 
     // The end of the finish cascade: the action menu popped, the exercise popped,

@@ -118,7 +118,9 @@ class PickerView extends Ui.View {
         var now = Time.now().value();
         loop.pick(list[cursor][:id], now);
         Crumb.at("picked");
-        Ui.pushView(new ExerciseView(loop), new ExerciseDelegate(loop), Ui.SLIDE_LEFT);
+        // The delegate takes the view it drives, not the loop.
+        var exercise = new ExerciseView(loop);
+        Ui.pushView(exercise, new ExerciseDelegate(exercise), Ui.SLIDE_LEFT);
     }
 
     // Back out of the full list into the ranking, then out to Home.

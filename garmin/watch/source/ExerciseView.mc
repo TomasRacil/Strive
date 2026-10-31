@@ -68,7 +68,10 @@ class ExerciseView extends Ui.View {
     }
 
     function menu() as Void {
-        Ui.pushView(new ActionMenuView(loop), new ActionMenuDelegate(loop), Ui.SLIDE_UP);
+        // The delegate drives the view, so it gets the view. Handing it the loop
+        // compiles and then fails on the first keypress with a missing symbol.
+        var menuView = new ActionMenuView(loop);
+        Ui.pushView(menuView, new ActionMenuDelegate(menuView), Ui.SLIDE_UP);
     }
 
     // ---- the transition hub ---------------------------------------------
@@ -81,12 +84,14 @@ class ExerciseView extends Ui.View {
         StriveApp.drain();
 
         if (loop.state == LoopState.REST) {
-            Ui.pushView(new RestView(loop), new RestDelegate(loop), Ui.SLIDE_LEFT);
+            var restView = new RestView(loop);
+            Ui.pushView(restView, new RestDelegate(restView), Ui.SLIDE_LEFT);
             return;
         }
 
         if (loop.state == LoopState.NEXT_PROMPT) {
-            Ui.pushView(new NextPromptView(loop), new NextPromptDelegate(loop), Ui.SLIDE_LEFT);
+            var promptView = new NextPromptView(loop);
+            Ui.pushView(promptView, new NextPromptDelegate(promptView), Ui.SLIDE_LEFT);
             return;
         }
 
