@@ -490,13 +490,16 @@ class TrainingLoop {
     // ---- building the catalogue ------------------------------------------
 
     // Library's normalised entries are String-keyed (they come from the phone's
-    // JSON) and carry no bodyweight flag; Engine wants symbols and the movement
-    // fractions. This is the one place that translation happens, so the picker
-    // and the engine cannot disagree about what a row means.
+    // JSON) and carry the bodyweight fraction as a plain number; Engine wants
+    // symbols and the movement fractions. This is the one place that translation
+    // happens, so the picker and the engine cannot disagree about what a row
+    // means.
     //
-    // `mus` is the muscle shares the phone sent. Without it the ranking is a
-    // library-order list, which is what a watch that has never heard from the
-    // phone gets - still usable, just not personalised.
+    // `mus` and `sec` are the muscle shares the phone sent, kept apart: the
+    // engine prices `sec` at 60%, which is the whole point of the payload
+    // distinguishing them. Without either the ranking is a library-order list,
+    // which is what a watch that has never heard from the phone gets - still
+    // usable, just not personalised.
     static function specsFrom(entries) as Lang.Array {
         var out = [] as Lang.Array;
         if (entries == null) {
@@ -517,13 +520,29 @@ class TrainingLoop {
                 :inc => entry["inc"],
                 :minW => entry["minW"],
                 :rest => whole(entry["rest"]),
-                :bw => Exercises.bwFor(entry["id"]),
+                :bw => bodyweightFraction(entry),
                 :pattern => "",
                 :primary => sharesOf(entry["mus"]),
-                :secondary => {}
+                :secondary => sharesOf(entry["sec"])
             });
         }
         return out;
+    }
+
+    // The payload's own fraction wins, because it is the phone's library and a
+    // user can add a calisthenics movement the watch has never heard of. A
+    // library entry from an older phone carries no `bw`, and that is what the
+    // compiled table in Exercises.mc is still for; an id it does not know is 0.0,
+    // a loaded lift, never a crash.
+    static function bodyweightFraction(entry) as Lang.Float {
+        var sent = entry["bw"];
+        if (sent instanceof Lang.Float || sent instanceof Lang.Double) {
+            return sent;
+        }
+        if (sent instanceof Lang.Number) {
+            return sent.toFloat();
+        }
+        return Exercises.bwFor(entry["id"] == null ? "" : entry["id"].toString());
     }
 
     // JSON numbers arrive as Float, and a rep target of 8.0 prints as
@@ -535,10 +554,10 @@ class TrainingLoop {
         return value;
     }
 
-    // `mus` is [[muscle, share], ...] on the wire. Everything the phone sends is
-    // treated as a primary mover: it is the only share the protocol carries, and
-    // pricing a stabiliser at 60% of a number that is already a primary share
-    // would invent a distinction the payload does not make.
+    // `mus` is [[muscle, share], ...] on the wire, and `sec` has the same shape.
+    // Both are String-keyed maps of muscle id -> share by the time Engine sees
+    // them; the engine is what applies the 40% discount to the second one, so the
+    // two are never merged here.
     static function sharesOf(mus) as Lang.Dictionary {
         var out = {};
         if (mus == null || !(mus instanceof Lang.Array)) {

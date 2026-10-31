@@ -4,11 +4,11 @@ using Toybox.Lang;
 // delivered through Garmin Connect Mobile, and resources cannot be edited
 // without rebuilding.
 //
-// `:bw` is the movement's fraction of body mass, and it is the one thing the
-// phone's library snapshot cannot tell the watch: `lib` carries id, name, rep
-// range, rest, increment and muscle shares, but not which movements are
-// bodyweight. The compiled list is therefore the authority on that, keyed by id,
-// for both the fallback list and the phone's.
+// `:bw` is the movement's fraction of body mass. The phone's `lib` snapshot
+// carries it now, so this table is the offline fallback: a watch that has never
+// heard from the phone, and an older phone whose payload predates the field.
+// It is still the authority for the shipped ids, which is why a payload value
+// and this one are kept equal.
 module Exercises {
 
     const BW_PULL_UP = 1.0;

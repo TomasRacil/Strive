@@ -252,7 +252,11 @@ module Library {
                     "rest" => entry[:rest],
                     "inc" => DEFAULT_INC,
                     "minW" => 0.0,
-                    "mus" => null
+                    "mus" => null,
+                    "sec" => null,
+                    // The compiled table is the only bodyweight knowledge a watch
+                    // with no library has, so it fills the field the phone would.
+                    "bw" => entry[:bw]
                 });
             }
             return out;
@@ -281,7 +285,13 @@ module Library {
                 "rest" => numberOr(item["rest"], DEFAULT_REST),
                 "inc" => numberOr(item["inc"], DEFAULT_INC),
                 "minW" => numberOr(item["minW"], 0.0),
-                "mus" => item["mus"]
+                // `mus` is the prime movers and `sec` the stabilisers; the engine
+                // discounts the second group by 40%, so they cannot be merged.
+                "mus" => item["mus"],
+                "sec" => item["sec"],
+                // Null, not 0.0, when the phone did not say: 0.0 is a loaded lift,
+                // and only the caller knows to ask the compiled table instead.
+                "bw" => numberOr(item["bw"], null)
             });
         }
         return out;
