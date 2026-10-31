@@ -76,7 +76,7 @@ that is a property of the kinds below, not a substitute for the dedupe.
 |-----------|---------|---------|
 | `hello`   | `{pv, app}` | phone is alive and speaking v1. Watch answers `ready`. |
 | `profile` | `{units, lang, bodyKg, maxHr, restHr, age, incUp, incLo}` | settings the watch needs to compute offline. |
-| `lib`     | `{v, ex:[{id, name, short, mus:[[m,share],...], lo, hi, rest, inc, minW}]}` | full exercise library snapshot, replaces what the watch has. |
+| `lib`     | `{v, ex:[{id, name, short, mus:[[m,share],...], sec:[[m,share],...], lo, hi, rest, inc, minW, bw}]}` | full exercise library snapshot, replaces what the watch has. |
 | `plan`    | `{v, wid, name, items:[{ex, sets, lo, hi, rest, ss}]}` | the workout to run now. Empty `items` clears it. |
 | `rec`     | `{at, items:[{ex, w, reps, sets, why}]}` | phone-computed recommendation, used while connected. |
 | `hist`    | `{ex:{<id>:[[w,reps,rir,ageDays],...]}}` | last 3 sets per exercise, up to 40 exercises, so the watch can recommend offline. |
@@ -86,6 +86,41 @@ that is a property of the kinds below, not a substitute for the dedupe.
 wholesale. A version number that is not newer than the stored one is still
 applied (the phone is authoritative) but the watch does not re-render unless
 something changed.
+
+### `lib` fields
+
+| field | type | meaning |
+|-------|------|---------|
+| `v` | number | library version, seconds. Reported back in `ready` as `libV`. |
+| `id`, `name` | string | exercise id and display name. Ids are the ones `hist`, `plan` and `set` use. |
+| `short` | string | name for the picker row; falls back to `name` on the watch. |
+| `mus` | `[[muscle, share],...]` | **primary** movers: the muscles that do the work, share `0..1` relative to the hardest-working one. |
+| `sec` | `[[muscle, share],...]` | **secondary** muscles: stabilisers and assisting movers, same scale. |
+| `lo`, `hi` | integer | rep range. `hi` is the target while holding the load, `lo` the target after an increase. |
+| `rest` | integer | rest after a set, seconds. |
+| `inc` | number | load increment, kg. |
+| `minW` | number | floor for the load, kg: empty bar, or the smallest plate pair. |
+| `bw` | number | bodyweight fraction, `0..1`: share of body mass the movement moves. 1.0 for a pull-up, 0.65 for a push-up, 0.0 for anything loaded with plates. |
+
+`mus` and `sec` are kept apart because the watch discounts the second group by
+40% when it prices fatigue (`Engine.loadByMuscle()`), and gates a lift on the
+biggest share in `mus` alone. Merging them into one list makes every stabiliser a
+prime mover: a compound then carries a stabiliser's fatigue at full weight and is
+ranked below an isolation lift that shares only its primary.
+
+`bw` is what makes a bodyweight set scoreable. Without it the watch prices the
+set at its external load alone, so a calisthenics movement arrives as a 0 kg lift
+that never progresses. The compiled table in `garmin/watch/source/Exercises.mc`
+is the fallback only, for a payload that predates the field.
+
+Both fields are additive, and that is what keeps the payload backward compatible
+in both directions:
+
+- An older watch ignores `sec` and `bw` and reads `mus` as it always did, so the
+  library still arrives whole.
+- An older phone sends no `sec`/`bw`; the watch reads an empty secondary group
+  and takes the fraction from the compiled table, so the ranking degrades to
+  what it was before rather than breaking.
 
 ## Watch → phone
 
