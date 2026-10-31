@@ -22,6 +22,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -29,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.strive.mobile.data.Engine
 import kotlinx.coroutines.delay
 
 @Composable
@@ -37,28 +40,25 @@ fun TrainScreen(state: AppState) {
     val unit = state.settings.unit
     fun t(key: String) = Strings.t(lang, key)
 
+    // The picker lists lifts in engine order - least-loaded muscles first - so
+    // the default selection is something the user can actually train today.
+    // Keyed on the history so it reshuffles between sessions; it is stable during
+    // one, because an open session is not written to `sessions` until it ends and
+    // the chip must not move out from under a finger.
+    val ordered = remember(state.exercises, state.sessions) { state.rankedExercises() }
+
     var exerciseIndex by remember { mutableIntStateOf(0) }
     var weightDisplay by remember { mutableDoubleStateOf(0.0) }
     var reps by remember { mutableIntStateOf(8) }
     var rir by remember { mutableIntStateOf(2) }
-    var restRemaining by remember { mutableIntStateOf(0) }
 
-    // Re-seed the inputs whenever the lift or the unit changes, so the stepper
-    // starts from the suggested load rather than a stale number.
-    LaunchedEffect(exerciseIndex, unit) {
-        val ex = state.exercises.getOrNull(exerciseIndex) ?: return@LaunchedEffect
-        weightDisplay = Format.toDisplay(state.suggestedWeight(ex.id), unit)
-        reps = ex.targetReps
-    }
+    // Rest is held as the instant it ends, not as a countdown: a counter loses
+    // its place on recomposition and stops advancing while the app is in the
+    // background, while an end time is still right when the user comes back.
+    var restEndsAt by remember { mutableStateOf<Long?>(null) }
+    var clockNow by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-    LaunchedEffect(restRemaining > 0) {
-        while (restRemaining > 0) {
-            delay(1000)
-            restRemaining -= 1
-        }
-    }
-
-    val exercise = state.exercises.getOrNull(exerciseIndex)
+    val exercise = ordered.getOrNull(exerciseIndex)
 
     // Deleting the last lift (or editing the list mid-session) must not crash.
     if (exercise == null) {
@@ -69,6 +69,39 @@ fun TrainScreen(state: AppState) {
         }
         return
     }
+
+    // Recomputed when the lift, the history or the profile's body mass changes -
+    // never per frame, because the engine walks the whole history.
+    val advice = remember(exercise.id, state.sessions, state.settings.bodyKg) {
+        state.loadAdvice(exercise.id)
+    }
+    val targetSets = remember(exercise.id, state.sessions) { state.targetSets(exercise.id) }
+
+    // Re-seed the inputs whenever the lift or the unit changes, so the stepper
+    // starts from the advice: the load and the rep target move together, and a
+    // jump in load comes with a lower target.
+    LaunchedEffect(exercise.id, advice, unit) {
+        weightDisplay = Format.toDisplay(advice.weightKg, unit)
+        reps = advice.targetReps
+    }
+
+    // Tick from the clock rather than by subtracting: the remainder is derived
+    // from restEndsAt on every pass, so a clock jump cannot leave it stuck or
+    // negative. The loop stops itself the moment the rest is over.
+    LaunchedEffect(restEndsAt) {
+        val endsAt = restEndsAt ?: return@LaunchedEffect
+        while (RestClock.remainingSeconds(endsAt, System.currentTimeMillis()) > 0) {
+            clockNow = System.currentTimeMillis()
+            delay(250)
+        }
+        clockNow = System.currentTimeMillis()
+        restEndsAt = null
+    }
+
+    val restRemaining = RestClock.remainingSeconds(restEndsAt, clockNow)
+    // The phone has no heart rate strap, so the two HR slots are null and the
+    // engine returns the base length. This call is where a strap would plug in.
+    val restSeconds = Engine.rest(exercise.restSeconds, null, null).seconds
 
     val active = state.active
 
@@ -99,7 +132,7 @@ fun TrainScreen(state: AppState) {
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            state.exercises.forEachIndexed { index, ex ->
+            ordered.forEachIndexed { index, ex ->
                 FilterChip(
                     selected = index == exerciseIndex,
                     onClick = { exerciseIndex = index },
@@ -134,8 +167,12 @@ fun TrainScreen(state: AppState) {
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.primary
                         )
+                        // Load and target reps together: they are one decision,
+                        // and showing the weight alone hides that a heavier set
+                        // is meant to be taken for fewer reps.
                         Text(
-                            "${t("train.suggested")}: ${Format.weight(state.suggestedWeight(exercise.id), unit)}",
+                            "${t("train.suggested")}: " +
+                                "${Format.weight(advice.weightKg, unit)} × ${advice.targetReps}",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -169,14 +206,14 @@ fun TrainScreen(state: AppState) {
         Button(
             onClick = {
                 state.logSet(exercise, Format.toKg(weightDisplay, unit), reps, rir)
-                restRemaining = exercise.restSeconds
+                restEndsAt = System.currentTimeMillis() + restSeconds * 1000L
             },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(t("train.logSet"))
         }
 
-        if (restRemaining > 0) {
+        if (restEndsAt != null) {
             Card(Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.padding(20.dp),
@@ -191,15 +228,17 @@ fun TrainScreen(state: AppState) {
                             color = MaterialTheme.colorScheme.tertiary
                         )
                     }
-                    OutlinedButton(onClick = { restRemaining = 0 }) { Text(t("train.skip")) }
+                    OutlinedButton(onClick = { restEndsAt = null }) { Text(t("train.skip")) }
                 }
             }
         }
 
         // ---- sets logged this session ----
         val logged = active.sets.count { it.exerciseId == exercise.id }
+        // Progress towards the engine's set target: a muscle with a light week
+        // gets a fourth set, a lift never done stays at three.
         Text(
-            Strings.sets(lang, logged),
+            "${Strings.sets(lang, logged)} / $targetSets",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 13.sp
         )
@@ -216,7 +255,7 @@ fun TrainScreen(state: AppState) {
 
         OutlinedButton(
             onClick = {
-                restRemaining = 0
+                restEndsAt = null
                 state.finishSession()
             },
             modifier = Modifier.fillMaxWidth()
