@@ -500,18 +500,25 @@ module Bus {
         });
     }
 
+    // `i` is the set's index in the session and the phone upserts on it, so a
+    // replay converges instead of duplicating. The RIR is the one the user
+    // confirmed on the sheet: without it the phone's e1rm is a guess and the
+    // next load never moves. -1 means "not recorded", which is what the phone
+    // already reads (WatchInbox takes `rir >= 0`), and a set the user left
+    // alone must not claim a 2 it never answered.
     function sendSet(index) as Void {
         var entries = Session.entries();
         if (entries.size() == 0) {
             return;
         }
         var entry = entries[entries.size() - 1];
+        var rir = entry[:rir];
         send("set", {
             "sid" => Session.sid(),
             "ex" => entry[:id],
             "w" => entry[:weight],
             "reps" => entry[:reps],
-            "rir" => -1,
+            "rir" => rir == null ? -1 : rir,
             "i" => index,
             "rest" => Library.restFor(entry[:id])
         });
@@ -519,11 +526,17 @@ module Bus {
 
     // The whole session, log attached. Upserted on the phone by sid, so a replay
     // after a reconnect converges instead of duplicating the workout.
+    //
+    // The log rows carry the RIR the sheet recorded. -1 is the phone's "not
+    // recorded" and is what a three-field entry from an older build reads back
+    // as, so the two shapes converge on the phone instead of one of them
+    // inventing a 2.
     function sendEnd(logText) as Void {
         var entries = Session.entries();
         var log = [] as Lang.Array;
         for (var i = 0; i < entries.size(); i++) {
-            log.add([entries[i][:id], entries[i][:weight], entries[i][:reps], -1]);
+            var rir = entries[i][:rir];
+            log.add([entries[i][:id], entries[i][:weight], entries[i][:reps], rir == null ? -1 : rir]);
         }
 
         send("end", {

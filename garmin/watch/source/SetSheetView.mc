@@ -1,5 +1,6 @@
 using Toybox.WatchUi as Ui;
 using Toybox.Graphics as Gfx;
+using Toybox.Time as Time;
 using Toybox.Lang;
 
 // Drawing for the set sheet: three rows, the focused one in green and marked
@@ -8,23 +9,23 @@ using Toybox.Lang;
 // The colours and font sizes are the training screen's own, so the sheet reads
 // as the same app rather than as a dialog from somewhere else. Push it with
 //
-//   var sheet = new SetSheet({ :weight => advice[:weight], :reps => advice[:reps] },
-//                            exercise[:inc], repeatSet);
-//   Ui.pushView(new SetSheetView(sheet, exercise[:id], nameText(exercise[:name])),
-//               new SetSheetDelegate(...), Ui.SLIDE_UP);
+//   loop.openSheet();
+//   var sheet = new SetSheetView(loop.sheet, loop, Text.fit(loop.name(), 12));
+//   Ui.pushView(sheet, new SetSheetDelegate(sheet), Ui.SLIDE_UP);
 //
-// and the delegate banks the accepted set itself, so the caller only has to
-// redraw when the view pops.
+// and banking goes through the loop and StriveApp.recordSet, so the state
+// machine, the log and the bus all see the same set in the same order. The
+// exercise view below the sheet decides what to show when it pops back.
 class SetSheetView extends Ui.View {
 
     var sheet;
-    var exerciseId;
+    var loop;
     var title;
 
-    function initialize(model, id, heading) {
+    function initialize(model, trainingLoop, heading) {
         View.initialize();
         sheet = model;
-        exerciseId = id;
+        loop = trainingLoop;
         title = heading;
     }
 
@@ -86,14 +87,13 @@ class SetSheetView extends Ui.View {
             return;
         }
 
-        // The sheet can be the first thing that logs a set: the training screen
-        // starts the session on its own first press, and this path must not
-        // assume that press happened.
-        if (!Session.active()) {
-            Session.start();
-        }
+        // The loop first: its tally and the rest it starts decide the next
+        // screen, and they have to be right even if the write below is what
+        // fails. The log and the bus follow from the same accepted set, so the
+        // phone and the watch can never disagree about what was lifted.
+        loop.bankSet(set[:weight], set[:reps], set[:rir], Time.now().value());
+        StriveApp.recordSet(loop, set);
 
-        Session.addSetWithRir(exerciseId, set[:weight], set[:reps], set[:rir]);
         Haptics.setBanked();
         Ui.popView(Ui.SLIDE_RIGHT);
     }
