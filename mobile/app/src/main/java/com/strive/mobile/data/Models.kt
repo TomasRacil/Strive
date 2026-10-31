@@ -74,18 +74,18 @@ data class Session(
     val durationSeconds: Long get() = endedAt?.let { (it - startedAt) / 1000 } ?: 0
 }
 
-/** Theme mode, weight unit and language, as the brief specifies. */
+/**
+ * Theme mode, weight unit, language and body mass.
+ *
+ * Body mass is here because the engine needs it: a bodyweight set has no
+ * external load, so its e1rm is only meaningful as a share of body mass. There
+ * is no settings row for it yet - the calibration flow is meant to write it -
+ * so it defaults to the engine's documented assumption rather than a second
+ * hardcoded 80.
+ */
 data class Settings(
     val theme: String = "system",   // system | dark | light
     val unit: String = "kg",        // kg | lb
-    val lang: String = "en"         // en | cs
-)
-
-/**
- * Per-exercise progression state: the load last used and whether the target
- * sets were completed at it.
- */
-data class ProgressionEntry(
-    val weightKg: Double,
-    val completed: Boolean
+    val lang: String = "en",        // en | cs
+    val bodyKg: Double = Engine.DEFAULT_BODY_KG
 )

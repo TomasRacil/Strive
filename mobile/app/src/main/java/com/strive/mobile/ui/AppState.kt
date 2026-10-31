@@ -7,13 +7,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.strive.mobile.data.Exercise
 import com.strive.mobile.data.ExerciseMatcher
-import com.strive.mobile.data.Progression
-import com.strive.mobile.data.ProgressionEntry
+import com.strive.mobile.data.LoadAdvice
 import com.strive.mobile.data.Seed
 import com.strive.mobile.data.Session
 import com.strive.mobile.data.SetEntry
 import com.strive.mobile.data.Settings
 import com.strive.mobile.data.StriveStore
+import com.strive.mobile.data.TrainingAdvice
 import com.strive.mobile.data.Variation
 import java.time.Instant
 import java.time.LocalDate
@@ -50,9 +50,6 @@ class AppState(context: Context) {
         private set
 
     var sessions by mutableStateOf(store.loadSessions())
-        private set
-
-    var progression by mutableStateOf(store.loadProgression())
         private set
 
     var active by mutableStateOf<ActiveSession?>(null)
@@ -250,28 +247,50 @@ class AppState(context: Context) {
     }
 
     /**
-     * How many sets to aim for on this lift. Three is the default; if the last
-     * session completed three or more with reps left in reserve, aim higher.
+     * How many sets to aim for on this lift, from the engine: a muscle under
+     * eight weekly effective sets gets a fourth, and a lift never done stays at
+     * three because the first session is about learning it.
      */
     fun targetSets(exerciseId: String): Int {
-        val last = sessions.firstOrNull { session ->
-            session.sets.any { it.exerciseId == exerciseId }
-        } ?: return 3
-
-        val sets = last.sets.filter { it.exerciseId == exerciseId }
-        val rirValues = sets.mapNotNull { it.rir }
-        val averageRir = if (rirValues.isEmpty()) 2.0 else rirValues.average()
-
-        return when {
-            sets.size >= 4 && averageRir >= 2.0 -> 5
-            sets.size >= 3 && averageRir >= 2.0 -> 4
-            sets.size <= 2 -> 3
-            else -> 3
-        }.coerceIn(2, 6)
+        val exercise = exercises.firstOrNull { it.id == exerciseId } ?: return DEFAULT_TARGET_SETS
+        return TrainingAdvice.targetSets(sessions, exercises, exercise, System.currentTimeMillis())
     }
 
-    fun suggestedWeight(exerciseId: String): Double =
-        Progression.suggest(progression[exerciseId], DEFAULT_START_KG)
+    /**
+     * Load and rep target for one lift, from the engine. The history is the last
+     * session that contained the lift, [DEFAULT_START_KG] is what a lift with no
+     * history starts at, and the profile's body mass prices bodyweight sets.
+     *
+     * The rep target moves with the advice - it is the bottom of the range after
+     * a jump, the top while holding - so callers that show a load should show
+     * this whole object rather than the number alone.
+     */
+    fun loadAdvice(exerciseId: String): LoadAdvice {
+        val exercise = exercises.firstOrNull { it.id == exerciseId }
+            // A deleted lift can still be named by an import or a stale caller;
+            // the seed load is the same answer an empty history would give.
+            ?: return LoadAdvice(DEFAULT_START_KG, DEFAULT_TARGET_REPS)
+        return TrainingAdvice.advice(
+            exercise = exercise,
+            sessions = sessions,
+            seedKg = DEFAULT_START_KG,
+            bodyKg = settings.bodyKg
+        )
+    }
+
+    /**
+     * The weight alone, for callers that render only a number (the watch plan
+     * push in SettingsScreen). Prefer [loadAdvice] wherever the rep target is
+     * shown as well.
+     */
+    fun suggestedWeight(exerciseId: String): Double = loadAdvice(exerciseId).weightKg
+
+    /**
+     * The library in recommendation order: least-loaded muscles first, so the
+     * lift picker opens on what the user can actually train today.
+     */
+    fun rankedExercises(): List<Exercise> =
+        TrainingAdvice.order(exercises, sessions, System.currentTimeMillis())
 
     fun logSet(exercise: Exercise, weightKg: Double, reps: Int, rir: Int?) {
         val session = active ?: return
@@ -300,17 +319,6 @@ class AppState(context: Context) {
             endedAt = System.currentTimeMillis(),
             sets = session.sets.toList()
         )
-
-        // Double progression: the load is earned by completing the target sets.
-        val updatedProgression = progression.toMutableMap()
-        session.sets.groupBy { it.exerciseId }.forEach { (exerciseId, sets) ->
-            updatedProgression[exerciseId] = ProgressionEntry(
-                weightKg = sets.last().weightKg,
-                completed = sets.size >= Progression.TARGET_SETS
-            )
-        }
-        progression = updatedProgression
-        store.saveProgression(updatedProgression)
 
         val all = listOf(finished) + sessions
         sessions = all
@@ -405,6 +413,13 @@ class AppState(context: Context) {
     }
 
     companion object {
+        /** What a lift with no history starts at; the engine clamps it to the spec. */
         const val DEFAULT_START_KG = 20.0
+
+        /** Sets to aim for when the lift is not in the library at all. */
+        const val DEFAULT_TARGET_SETS = 3
+
+        /** Rep target for a lift the library no longer holds. */
+        const val DEFAULT_TARGET_REPS = 8
     }
 }
