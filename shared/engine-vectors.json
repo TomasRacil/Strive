@@ -1,0 +1,1738 @@
+{
+  "version": 1,
+  "tolerance": 0.001,
+  "note": "Timestamps are seconds on a compressed timeline: only differences matter, and small integers survive Monkey C's 32-bit Float exactly.",
+  "e1rm": [
+    {
+      "weight": 100.0,
+      "reps": 8,
+      "rir": 2,
+      "expect": 133.333333,
+      "name": "fresh 100 kg for 8 at 2 in reserve"
+    },
+    {
+      "weight": 82.5,
+      "reps": 10,
+      "rir": 3,
+      "expect": 118.25,
+      "name": "top of range 82.5 kg for 10 at 3 in reserve"
+    },
+    {
+      "weight": 120.0,
+      "reps": 5,
+      "rir": 0,
+      "expect": 140.0,
+      "name": "taken to failure 120 kg for 5"
+    },
+    {
+      "weight": 60.0,
+      "reps": 20,
+      "rir": 20,
+      "expect": 120.0,
+      "name": "effective reps clamped at 30"
+    },
+    {
+      "weight": 0.0,
+      "reps": 12,
+      "rir": 1,
+      "expect": 0.0,
+      "name": "bodyweight set with no external load"
+    },
+    {
+      "weight": 0.0,
+      "reps": 12,
+      "rir": 1,
+      "bodyKg": 80.0,
+      "bodyweightFraction": 0.65,
+      "expect": 74.533333,
+      "name": "bodyweight set priced at 65 percent of 80 kg"
+    }
+  ],
+  "nextLoad": [
+    {
+      "spec": {
+        "id": "bench_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 150,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.55,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "pectoralis_minor": 0.4,
+          "serratus_anterior": 0.3,
+          "triceps_medial": 0.3,
+          "rotator_cuff": 0.2
+        }
+      },
+      "history": [],
+      "seedKg": 60.0,
+      "expectWeight": 60.0,
+      "expectReps": 10,
+      "name": "no history uses the seed"
+    },
+    {
+      "spec": {
+        "id": "bench_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 150,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.55,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "pectoralis_minor": 0.4,
+          "serratus_anterior": 0.3,
+          "triceps_medial": 0.3,
+          "rotator_cuff": 0.2
+        }
+      },
+      "history": [
+        {
+          "weight": 100.0,
+          "reps": 10,
+          "rir": 3
+        }
+      ],
+      "seedKg": 60.0,
+      "expectWeight": 102.5,
+      "expectReps": 6,
+      "name": "top of range with 3 in reserve earns the increment"
+    },
+    {
+      "spec": {
+        "id": "bench_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 150,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.55,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "pectoralis_minor": 0.4,
+          "serratus_anterior": 0.3,
+          "triceps_medial": 0.3,
+          "rotator_cuff": 0.2
+        }
+      },
+      "history": [
+        {
+          "weight": 100.0,
+          "reps": 10,
+          "rir": 1
+        }
+      ],
+      "seedKg": 60.0,
+      "expectWeight": 100.0,
+      "expectReps": 10,
+      "name": "top of range with 1 in reserve holds for one more session"
+    },
+    {
+      "spec": {
+        "id": "bench_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 150,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.55,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "pectoralis_minor": 0.4,
+          "serratus_anterior": 0.3,
+          "triceps_medial": 0.3,
+          "rotator_cuff": 0.2
+        }
+      },
+      "history": [
+        {
+          "weight": 100.0,
+          "reps": 5,
+          "rir": 0
+        }
+      ],
+      "seedKg": 60.0,
+      "expectWeight": 97.5,
+      "expectReps": 10,
+      "name": "failure below the range deloads"
+    },
+    {
+      "spec": {
+        "id": "bench_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 150,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.55,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "pectoralis_minor": 0.4,
+          "serratus_anterior": 0.3,
+          "triceps_medial": 0.3,
+          "rotator_cuff": 0.2
+        }
+      },
+      "history": [
+        {
+          "weight": 100.0,
+          "reps": 7,
+          "rir": 0
+        }
+      ],
+      "seedKg": 60.0,
+      "expectWeight": 100.0,
+      "expectReps": 10,
+      "name": "failure inside the range holds the load"
+    },
+    {
+      "spec": {
+        "id": "bench_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 150,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.55,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "pectoralis_minor": 0.4,
+          "serratus_anterior": 0.3,
+          "triceps_medial": 0.3,
+          "rotator_cuff": 0.2
+        }
+      },
+      "history": [
+        {
+          "weight": 101.3,
+          "reps": 10,
+          "rir": 3
+        }
+      ],
+      "seedKg": 60.0,
+      "expectWeight": 105.0,
+      "expectReps": 6,
+      "name": "an odd load rounds to the increment"
+    },
+    {
+      "spec": {
+        "id": "bench_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 150,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.55,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "pectoralis_minor": 0.4,
+          "serratus_anterior": 0.3,
+          "triceps_medial": 0.3,
+          "rotator_cuff": 0.2
+        }
+      },
+      "history": [
+        {
+          "weight": 98.7,
+          "reps": 8,
+          "rir": 2
+        }
+      ],
+      "seedKg": 60.0,
+      "expectWeight": 97.5,
+      "expectReps": 10,
+      "name": "a held odd load rounds down to the increment"
+    },
+    {
+      "spec": {
+        "id": "bench_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 150,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.55,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "pectoralis_minor": 0.4,
+          "serratus_anterior": 0.3,
+          "triceps_medial": 0.3,
+          "rotator_cuff": 0.2
+        }
+      },
+      "history": [
+        {
+          "weight": 20.0,
+          "reps": 3,
+          "rir": 0
+        }
+      ],
+      "seedKg": 60.0,
+      "expectWeight": 20.0,
+      "expectReps": 10,
+      "name": "a deload cannot go under the empty bar"
+    },
+    {
+      "spec": {
+        "id": "push_ups",
+        "lo": 12,
+        "hi": 20,
+        "inc": 2.5,
+        "minW": 0.0,
+        "rest": 90,
+        "pattern": "pushup",
+        "bw": 0.65,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.5,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "serratus_anterior": 0.4,
+          "rectus_abdominis": 0.2
+        }
+      },
+      "history": [
+        {
+          "weight": 0.0,
+          "reps": 20,
+          "rir": 3
+        }
+      ],
+      "seedKg": 0.0,
+      "expectWeight": 2.5,
+      "expectReps": 12,
+      "name": "bodyweight exercise earns a plate"
+    },
+    {
+      "spec": {
+        "id": "push_ups",
+        "lo": 12,
+        "hi": 20,
+        "inc": 2.5,
+        "minW": 0.0,
+        "rest": 90,
+        "pattern": "pushup",
+        "bw": 0.65,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.5,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "serratus_anterior": 0.4,
+          "rectus_abdominis": 0.2
+        }
+      },
+      "history": [
+        {
+          "weight": 0.0,
+          "reps": 10,
+          "rir": 0
+        }
+      ],
+      "seedKg": 0.0,
+      "expectWeight": 0.0,
+      "expectReps": 20,
+      "name": "bodyweight failure stays at bodyweight"
+    },
+    {
+      "spec": {
+        "id": "bench_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 150,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.55,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "pectoralis_minor": 0.4,
+          "serratus_anterior": 0.3,
+          "triceps_medial": 0.3,
+          "rotator_cuff": 0.2
+        }
+      },
+      "history": [
+        {
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 2
+        },
+        {
+          "weight": 95.0,
+          "reps": 10,
+          "rir": 0
+        }
+      ],
+      "seedKg": 60.0,
+      "expectWeight": 100.0,
+      "expectReps": 10,
+      "name": "the top set is the best e1rm, not the last set"
+    },
+    {
+      "spec": {
+        "id": "squats",
+        "lo": 4,
+        "hi": 8,
+        "inc": 5.0,
+        "minW": 20.0,
+        "rest": 180,
+        "pattern": "squat",
+        "bw": 0.0,
+        "primary": {
+          "vastus_lateralis": 0.9,
+          "gluteus_maximus": 0.9,
+          "rectus_femoris": 0.8,
+          "vastus_medialis": 0.8
+        },
+        "secondary": {
+          "erector_spinae": 0.5,
+          "adductors": 0.4,
+          "biceps_femoris": 0.4,
+          "semitendinosus": 0.3,
+          "transverse_abdominis": 0.3,
+          "gluteus_medius": 0.3
+        }
+      },
+      "history": [
+        {
+          "weight": 140.0,
+          "reps": 8,
+          "rir": 2
+        }
+      ],
+      "seedKg": 100.0,
+      "expectWeight": 145.0,
+      "expectReps": 4,
+      "name": "lower body takes a five kilo step"
+    },
+    {
+      "spec": {
+        "id": "bench_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 150,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.55,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "pectoralis_minor": 0.4,
+          "serratus_anterior": 0.3,
+          "triceps_medial": 0.3,
+          "rotator_cuff": 0.2
+        }
+      },
+      "history": [
+        {
+          "weight": 100.0,
+          "reps": 10,
+          "rir": null
+        }
+      ],
+      "seedKg": 60.0,
+      "expectWeight": 102.5,
+      "expectReps": 6,
+      "name": "an unrecorded RIR counts as two in reserve"
+    }
+  ],
+  "recommendedSets": [
+    {
+      "spec": {
+        "id": "bench_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 150,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.55,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "pectoralis_minor": 0.4,
+          "serratus_anterior": 0.3,
+          "triceps_medial": 0.3,
+          "rotator_cuff": 0.2
+        }
+      },
+      "weeklyMuscleSets": 6,
+      "everTrained": true,
+      "expect": 4,
+      "name": "muscle under eight weekly sets gets a fourth set"
+    },
+    {
+      "spec": {
+        "id": "bench_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 150,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.55,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "pectoralis_minor": 0.4,
+          "serratus_anterior": 0.3,
+          "triceps_medial": 0.3,
+          "rotator_cuff": 0.2
+        }
+      },
+      "weeklyMuscleSets": 12,
+      "everTrained": true,
+      "expect": 3,
+      "name": "a well-fed muscle gets three"
+    },
+    {
+      "spec": {
+        "id": "squats",
+        "lo": 4,
+        "hi": 8,
+        "inc": 5.0,
+        "minW": 20.0,
+        "rest": 180,
+        "pattern": "squat",
+        "bw": 0.0,
+        "primary": {
+          "vastus_lateralis": 0.9,
+          "gluteus_maximus": 0.9,
+          "rectus_femoris": 0.8,
+          "vastus_medialis": 0.8
+        },
+        "secondary": {
+          "erector_spinae": 0.5,
+          "adductors": 0.4,
+          "biceps_femoris": 0.4,
+          "semitendinosus": 0.3,
+          "transverse_abdominis": 0.3,
+          "gluteus_medius": 0.3
+        }
+      },
+      "weeklyMuscleSets": 8,
+      "everTrained": true,
+      "expect": 3,
+      "name": "exactly eight weekly sets is enough"
+    },
+    {
+      "spec": {
+        "id": "bicep_curls",
+        "lo": 8,
+        "hi": 12,
+        "inc": 2.5,
+        "minW": 2.5,
+        "rest": 90,
+        "pattern": "",
+        "bw": 0.0,
+        "primary": {
+          "biceps_brachii": 1.0,
+          "brachialis": 0.6
+        },
+        "secondary": {
+          "brachioradialis": 0.5,
+          "forearm_flexors": 0.4,
+          "anterior_deltoid": 0.1
+        }
+      },
+      "weeklyMuscleSets": 0,
+      "everTrained": false,
+      "expect": 3,
+      "name": "never trained stays at three however fresh"
+    }
+  ],
+  "muscleLoad": [
+    {
+      "specs": [
+        {
+          "id": "bench_press",
+          "lo": 6,
+          "hi": 10,
+          "inc": 2.5,
+          "minW": 20.0,
+          "rest": 150,
+          "pattern": "pushup",
+          "bw": 0.0,
+          "primary": {
+            "pectoralis_major": 1.0,
+            "anterior_deltoid": 0.55,
+            "triceps_lateral": 0.5
+          },
+          "secondary": {
+            "pectoralis_minor": 0.4,
+            "serratus_anterior": 0.3,
+            "triceps_medial": 0.3,
+            "rotator_cuff": 0.2
+          }
+        }
+      ],
+      "sets": [
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1728000
+        }
+      ],
+      "now": 1728000,
+      "expect": {
+        "pectoralis_major": 1.2,
+        "anterior_deltoid": 0.66,
+        "triceps_lateral": 0.6,
+        "pectoralis_minor": 0.288,
+        "serratus_anterior": 0.216,
+        "triceps_medial": 0.216,
+        "rotator_cuff": 0.144
+      },
+      "name": "one hard bench set today"
+    },
+    {
+      "specs": [
+        {
+          "id": "bench_press",
+          "lo": 6,
+          "hi": 10,
+          "inc": 2.5,
+          "minW": 20.0,
+          "rest": 150,
+          "pattern": "pushup",
+          "bw": 0.0,
+          "primary": {
+            "pectoralis_major": 1.0,
+            "anterior_deltoid": 0.55,
+            "triceps_lateral": 0.5
+          },
+          "secondary": {
+            "pectoralis_minor": 0.4,
+            "serratus_anterior": 0.3,
+            "triceps_medial": 0.3,
+            "rotator_cuff": 0.2
+          }
+        }
+      ],
+      "sets": [
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1555200
+        }
+      ],
+      "now": 1728000,
+      "expect": {
+        "pectoralis_major": 0.689219,
+        "anterior_deltoid": 0.37907,
+        "triceps_lateral": 0.34461,
+        "pectoralis_minor": 0.165413,
+        "serratus_anterior": 0.124059,
+        "triceps_medial": 0.124059,
+        "rotator_cuff": 0.082706
+      },
+      "name": "the same set two days ago"
+    },
+    {
+      "specs": [
+        {
+          "id": "bench_press",
+          "lo": 6,
+          "hi": 10,
+          "inc": 2.5,
+          "minW": 20.0,
+          "rest": 150,
+          "pattern": "pushup",
+          "bw": 0.0,
+          "primary": {
+            "pectoralis_major": 1.0,
+            "anterior_deltoid": 0.55,
+            "triceps_lateral": 0.5
+          },
+          "secondary": {
+            "pectoralis_minor": 0.4,
+            "serratus_anterior": 0.3,
+            "triceps_medial": 0.3,
+            "rotator_cuff": 0.2
+          }
+        }
+      ],
+      "sets": [
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1209600
+        }
+      ],
+      "now": 1728000,
+      "expect": {
+        "pectoralis_major": 0.227357,
+        "anterior_deltoid": 0.125047,
+        "triceps_lateral": 0.113679,
+        "pectoralis_minor": 0.054566,
+        "serratus_anterior": 0.040924,
+        "triceps_medial": 0.040924,
+        "rotator_cuff": 0.027283
+      },
+      "name": "the same set six days ago"
+    },
+    {
+      "specs": [
+        {
+          "id": "bench_press",
+          "lo": 6,
+          "hi": 10,
+          "inc": 2.5,
+          "minW": 20.0,
+          "rest": 150,
+          "pattern": "pushup",
+          "bw": 0.0,
+          "primary": {
+            "pectoralis_major": 1.0,
+            "anterior_deltoid": 0.55,
+            "triceps_lateral": 0.5
+          },
+          "secondary": {
+            "pectoralis_minor": 0.4,
+            "serratus_anterior": 0.3,
+            "triceps_medial": 0.3,
+            "rotator_cuff": 0.2
+          }
+        }
+      ],
+      "sets": [
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 4,
+          "ts": 1728000
+        }
+      ],
+      "now": 1728000,
+      "expect": {
+        "pectoralis_major": 0.8,
+        "anterior_deltoid": 0.44,
+        "triceps_lateral": 0.4,
+        "pectoralis_minor": 0.192,
+        "serratus_anterior": 0.144,
+        "triceps_medial": 0.144,
+        "rotator_cuff": 0.096
+      },
+      "name": "an easy set counts for less"
+    },
+    {
+      "specs": [
+        {
+          "id": "bench_press",
+          "lo": 6,
+          "hi": 10,
+          "inc": 2.5,
+          "minW": 20.0,
+          "rest": 150,
+          "pattern": "pushup",
+          "bw": 0.0,
+          "primary": {
+            "pectoralis_major": 1.0,
+            "anterior_deltoid": 0.55,
+            "triceps_lateral": 0.5
+          },
+          "secondary": {
+            "pectoralis_minor": 0.4,
+            "serratus_anterior": 0.3,
+            "triceps_medial": 0.3,
+            "rotator_cuff": 0.2
+          }
+        }
+      ],
+      "sets": [
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1036800
+        }
+      ],
+      "now": 1728000,
+      "expect": {},
+      "name": "a set outside the week is history"
+    },
+    {
+      "specs": [
+        {
+          "id": "bench_press",
+          "lo": 6,
+          "hi": 10,
+          "inc": 2.5,
+          "minW": 20.0,
+          "rest": 150,
+          "pattern": "pushup",
+          "bw": 0.0,
+          "primary": {
+            "pectoralis_major": 1.0,
+            "anterior_deltoid": 0.55,
+            "triceps_lateral": 0.5
+          },
+          "secondary": {
+            "pectoralis_minor": 0.4,
+            "serratus_anterior": 0.3,
+            "triceps_medial": 0.3,
+            "rotator_cuff": 0.2
+          }
+        }
+      ],
+      "sets": [
+        {
+          "id": "ghost_lift",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1728000
+        }
+      ],
+      "now": 1728000,
+      "expect": {},
+      "name": "an exercise the library no longer has is skipped"
+    },
+    {
+      "specs": [
+        {
+          "id": "bench_press",
+          "lo": 6,
+          "hi": 10,
+          "inc": 2.5,
+          "minW": 20.0,
+          "rest": 150,
+          "pattern": "pushup",
+          "bw": 0.0,
+          "primary": {
+            "pectoralis_major": 1.0,
+            "anterior_deltoid": 0.55,
+            "triceps_lateral": 0.5
+          },
+          "secondary": {
+            "pectoralis_minor": 0.4,
+            "serratus_anterior": 0.3,
+            "triceps_medial": 0.3,
+            "rotator_cuff": 0.2
+          }
+        }
+      ],
+      "sets": [
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": null,
+          "ts": 1728000
+        }
+      ],
+      "now": 1728000,
+      "expect": {
+        "pectoralis_major": 1.0,
+        "anterior_deltoid": 0.55,
+        "triceps_lateral": 0.5,
+        "pectoralis_minor": 0.24,
+        "serratus_anterior": 0.18,
+        "triceps_medial": 0.18,
+        "rotator_cuff": 0.12
+      },
+      "name": "a set with no RIR recorded counts as a normal set"
+    },
+    {
+      "specs": [
+        {
+          "id": "squats",
+          "lo": 4,
+          "hi": 8,
+          "inc": 5.0,
+          "minW": 20.0,
+          "rest": 180,
+          "pattern": "squat",
+          "bw": 0.0,
+          "primary": {
+            "vastus_lateralis": 0.9,
+            "gluteus_maximus": 0.9,
+            "rectus_femoris": 0.8,
+            "vastus_medialis": 0.8
+          },
+          "secondary": {
+            "erector_spinae": 0.5,
+            "adductors": 0.4,
+            "biceps_femoris": 0.4,
+            "semitendinosus": 0.3,
+            "transverse_abdominis": 0.3,
+            "gluteus_medius": 0.3
+          }
+        }
+      ],
+      "sets": [
+        {
+          "id": "squats",
+          "weight": 120.0,
+          "reps": 5,
+          "rir": 2,
+          "ts": 1728000
+        }
+      ],
+      "now": 1728000,
+      "expect": {
+        "vastus_lateralis": 0.9,
+        "gluteus_maximus": 0.9,
+        "rectus_femoris": 0.8,
+        "vastus_medialis": 0.8,
+        "erector_spinae": 0.3,
+        "adductors": 0.24,
+        "biceps_femoris": 0.24,
+        "semitendinosus": 0.18,
+        "transverse_abdominis": 0.18,
+        "gluteus_medius": 0.18
+      },
+      "name": "a squat session spreads over both legs and trunk"
+    }
+  ],
+  "recovery": [
+    {
+      "load": {},
+      "expect": {},
+      "name": "an untouched muscle is fully recovered"
+    },
+    {
+      "load": {
+        "pectoralis_major": 6.0
+      },
+      "expect": {
+        "pectoralis_major": 0.5
+      },
+      "name": "six effective sets is half recovered"
+    },
+    {
+      "load": {
+        "pectoralis_major": 12.0
+      },
+      "expect": {
+        "pectoralis_major": 0.0
+      },
+      "name": "twelve effective sets is empty"
+    },
+    {
+      "load": {
+        "pectoralis_major": 18.0
+      },
+      "expect": {
+        "pectoralis_major": 0.0
+      },
+      "name": "more than a hard week cannot go negative"
+    },
+    {
+      "load": {
+        "pectoralis_major": 9.0
+      },
+      "expect": {
+        "pectoralis_major": 0.25
+      },
+      "name": "nine effective sets sits exactly on the exclusion line"
+    }
+  ],
+  "rank": [
+    {
+      "specs": [
+        {
+          "id": "bench_press",
+          "lo": 6,
+          "hi": 10,
+          "inc": 2.5,
+          "minW": 20.0,
+          "rest": 150,
+          "pattern": "pushup",
+          "bw": 0.0,
+          "primary": {
+            "pectoralis_major": 1.0,
+            "anterior_deltoid": 0.55,
+            "triceps_lateral": 0.5
+          },
+          "secondary": {
+            "pectoralis_minor": 0.4,
+            "serratus_anterior": 0.3,
+            "triceps_medial": 0.3,
+            "rotator_cuff": 0.2
+          }
+        },
+        {
+          "id": "bicep_curls",
+          "lo": 8,
+          "hi": 12,
+          "inc": 2.5,
+          "minW": 2.5,
+          "rest": 90,
+          "pattern": "",
+          "bw": 0.0,
+          "primary": {
+            "biceps_brachii": 1.0,
+            "brachialis": 0.6
+          },
+          "secondary": {
+            "brachioradialis": 0.5,
+            "forearm_flexors": 0.4,
+            "anterior_deltoid": 0.1
+          }
+        }
+      ],
+      "sets": [
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1555200
+        },
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1555200
+        },
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 7,
+          "rir": 1,
+          "ts": 1555200
+        }
+      ],
+      "now": 1728000,
+      "expectOrder": [
+        "bicep_curls",
+        "bench_press"
+      ],
+      "expectScores": {
+        "bicep_curls": 1.131046,
+        "bench_press": 0.987174
+      },
+      "name": "fresh arms outrank a chest trained two days ago"
+    },
+    {
+      "specs": [
+        {
+          "id": "cable_fly",
+          "lo": 10,
+          "hi": 15,
+          "inc": 2.5,
+          "minW": 2.5,
+          "rest": 90,
+          "pattern": "",
+          "bw": 0.0,
+          "primary": {
+            "pectoralis_major": 1.0
+          },
+          "secondary": {
+            "anterior_deltoid": 0.3
+          }
+        },
+        {
+          "id": "bicep_curls",
+          "lo": 8,
+          "hi": 12,
+          "inc": 2.5,
+          "minW": 2.5,
+          "rest": 90,
+          "pattern": "",
+          "bw": 0.0,
+          "primary": {
+            "biceps_brachii": 1.0,
+            "brachialis": 0.6
+          },
+          "secondary": {
+            "brachioradialis": 0.5,
+            "forearm_flexors": 0.4,
+            "anterior_deltoid": 0.1
+          }
+        }
+      ],
+      "sets": [],
+      "now": 1728000,
+      "expectOrder": [
+        "cable_fly",
+        "bicep_curls"
+      ],
+      "expectScores": {
+        "cable_fly": 1.15,
+        "bicep_curls": 1.15
+      },
+      "name": "identical lifts with no history tie on library order"
+    },
+    {
+      "specs": [
+        {
+          "id": "bench_press",
+          "lo": 6,
+          "hi": 10,
+          "inc": 2.5,
+          "minW": 20.0,
+          "rest": 150,
+          "pattern": "pushup",
+          "bw": 0.0,
+          "primary": {
+            "pectoralis_major": 1.0,
+            "anterior_deltoid": 0.55,
+            "triceps_lateral": 0.5
+          },
+          "secondary": {
+            "pectoralis_minor": 0.4,
+            "serratus_anterior": 0.3,
+            "triceps_medial": 0.3,
+            "rotator_cuff": 0.2
+          }
+        },
+        {
+          "id": "bicep_curls",
+          "lo": 8,
+          "hi": 12,
+          "inc": 2.5,
+          "minW": 2.5,
+          "rest": 90,
+          "pattern": "",
+          "bw": 0.0,
+          "primary": {
+            "biceps_brachii": 1.0,
+            "brachialis": 0.6
+          },
+          "secondary": {
+            "brachioradialis": 0.5,
+            "forearm_flexors": 0.4,
+            "anterior_deltoid": 0.1
+          }
+        }
+      ],
+      "sets": [
+        {
+          "id": "bench_press",
+          "weight": 90.0,
+          "reps": 8,
+          "rir": 3,
+          "ts": 950400
+        },
+        {
+          "id": "bicep_curls",
+          "weight": 15.0,
+          "reps": 10,
+          "rir": 3,
+          "ts": 1641600
+        }
+      ],
+      "now": 1728000,
+      "expectOrder": [
+        "bench_press",
+        "bicep_curls"
+      ],
+      "expectScores": {
+        "bench_press": 1.161959,
+        "bicep_curls": 1.00614
+      },
+      "name": "a lift that has not come up in nine days beats one trained yesterday"
+    },
+    {
+      "specs": [
+        {
+          "id": "bench_press",
+          "lo": 6,
+          "hi": 10,
+          "inc": 2.5,
+          "minW": 20.0,
+          "rest": 150,
+          "pattern": "pushup",
+          "bw": 0.0,
+          "primary": {
+            "pectoralis_major": 1.0,
+            "anterior_deltoid": 0.55,
+            "triceps_lateral": 0.5
+          },
+          "secondary": {
+            "pectoralis_minor": 0.4,
+            "serratus_anterior": 0.3,
+            "triceps_medial": 0.3,
+            "rotator_cuff": 0.2
+          }
+        },
+        {
+          "id": "bicep_curls",
+          "lo": 8,
+          "hi": 12,
+          "inc": 2.5,
+          "minW": 2.5,
+          "rest": 90,
+          "pattern": "",
+          "bw": 0.0,
+          "primary": {
+            "biceps_brachii": 1.0,
+            "brachialis": 0.6
+          },
+          "secondary": {
+            "brachioradialis": 0.5,
+            "forearm_flexors": 0.4,
+            "anterior_deltoid": 0.1
+          }
+        }
+      ],
+      "sets": [
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1728000
+        },
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1728000
+        },
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1728000
+        },
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1728000
+        },
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1728000
+        },
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1728000
+        },
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1728000
+        },
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 1,
+          "ts": 1728000
+        }
+      ],
+      "now": 1728000,
+      "expectOrder": [
+        "bicep_curls"
+      ],
+      "expectScores": {
+        "bicep_curls": 1.062
+      },
+      "name": "a wrecked chest is excluded even with fresh triceps"
+    },
+    {
+      "specs": [
+        {
+          "id": "bicep_curls",
+          "lo": 8,
+          "hi": 12,
+          "inc": 2.5,
+          "minW": 2.5,
+          "rest": 90,
+          "pattern": "",
+          "bw": 0.0,
+          "primary": {
+            "biceps_brachii": 1.0,
+            "brachialis": 0.6
+          },
+          "secondary": {
+            "brachioradialis": 0.5,
+            "forearm_flexors": 0.4,
+            "anterior_deltoid": 0.1
+          }
+        },
+        {
+          "id": "overhead_press",
+          "lo": 6,
+          "hi": 10,
+          "inc": 2.5,
+          "minW": 20.0,
+          "rest": 120,
+          "pattern": "pushup",
+          "bw": 0.0,
+          "primary": {
+            "anterior_deltoid": 1.0,
+            "lateral_deltoid": 0.6,
+            "triceps_lateral": 0.5
+          },
+          "secondary": {
+            "trapezius_upper": 0.4,
+            "rotator_cuff": 0.3,
+            "serratus_anterior": 0.3,
+            "rectus_abdominis": 0.2,
+            "triceps_medial": 0.2
+          }
+        }
+      ],
+      "sets": [
+        {
+          "id": "bicep_curls",
+          "weight": 15.0,
+          "reps": 10,
+          "rir": 3,
+          "ts": 1641600
+        },
+        {
+          "id": "bicep_curls",
+          "weight": 15.0,
+          "reps": 10,
+          "rir": 3,
+          "ts": 1382400
+        },
+        {
+          "id": "bicep_curls",
+          "weight": 15.0,
+          "reps": 10,
+          "rir": 3,
+          "ts": 1036800
+        },
+        {
+          "id": "bicep_curls",
+          "weight": 15.0,
+          "reps": 10,
+          "rir": 3,
+          "ts": 777600
+        },
+        {
+          "id": "bicep_curls",
+          "weight": 15.0,
+          "reps": 10,
+          "rir": 3,
+          "ts": 432000
+        },
+        {
+          "id": "bicep_curls",
+          "weight": 15.0,
+          "reps": 10,
+          "rir": 3,
+          "ts": 172800
+        },
+        {
+          "id": "bicep_curls",
+          "weight": 15.0,
+          "reps": 10,
+          "rir": 3,
+          "ts": -172800
+        },
+        {
+          "id": "bicep_curls",
+          "weight": 15.0,
+          "reps": 10,
+          "rir": 3,
+          "ts": -432000
+        },
+        {
+          "id": "overhead_press",
+          "weight": 45.0,
+          "reps": 8,
+          "rir": 3,
+          "ts": 950400
+        }
+      ],
+      "now": 1728000,
+      "expectOrder": [
+        "bicep_curls",
+        "overhead_press"
+      ],
+      "expectScores": {
+        "bicep_curls": 1.210116,
+        "overhead_press": 1.16182
+      },
+      "name": "frequent lifting earns the frequency term"
+    }
+  ],
+  "rest": [
+    {
+      "base": 150,
+      "peakHr": null,
+      "currentHr": null,
+      "restingHr": 60,
+      "ceiling": null,
+      "expectSeconds": 150,
+      "expectReady": false,
+      "name": "no strap at all leaves the base rest alone"
+    },
+    {
+      "base": 150,
+      "peakHr": 180,
+      "currentHr": 150,
+      "restingHr": 60,
+      "ceiling": null,
+      "expectSeconds": 165,
+      "expectReady": false,
+      "name": "heart rate still high extends by fifteen seconds"
+    },
+    {
+      "base": 150,
+      "peakHr": 180,
+      "currentHr": 100,
+      "restingHr": 60,
+      "ceiling": null,
+      "expectSeconds": 150,
+      "expectReady": true,
+      "name": "heart rate recovered early marks ready"
+    },
+    {
+      "base": 150,
+      "peakHr": 180,
+      "currentHr": 108,
+      "restingHr": 60,
+      "ceiling": null,
+      "expectSeconds": 150,
+      "expectReady": true,
+      "name": "sitting exactly on target counts as ready"
+    },
+    {
+      "base": 200,
+      "peakHr": 190,
+      "currentHr": 185,
+      "restingHr": 60,
+      "ceiling": 300,
+      "expectSeconds": 215,
+      "expectReady": false,
+      "name": "the extension stops at one and a half times base"
+    },
+    {
+      "base": 295,
+      "peakHr": 190,
+      "currentHr": 185,
+      "restingHr": 60,
+      "ceiling": 300,
+      "expectSeconds": 300,
+      "expectReady": false,
+      "name": "already at the ceiling stays there"
+    },
+    {
+      "base": 20,
+      "peakHr": null,
+      "currentHr": null,
+      "restingHr": 60,
+      "ceiling": null,
+      "expectSeconds": 30,
+      "expectReady": false,
+      "name": "a twenty second base is still thirty"
+    },
+    {
+      "base": 20,
+      "peakHr": 200,
+      "currentHr": 190,
+      "restingHr": 60,
+      "ceiling": null,
+      "expectSeconds": 30,
+      "expectReady": false,
+      "name": "a hard effort on a short base cannot shrink it"
+    },
+    {
+      "base": 120,
+      "peakHr": 150,
+      "currentHr": 95,
+      "restingHr": 45,
+      "ceiling": null,
+      "expectSeconds": 135,
+      "expectReady": false,
+      "name": "a profile with a low resting rate gets a lower target"
+    }
+  ],
+  "seed": [
+    {
+      "bodyKg": 80.0,
+      "pushUpReps": 20,
+      "squatReps": 25,
+      "expectE1rm": {
+        "pushup": 86.666667,
+        "squat": 124.666667
+      },
+      "spec": {
+        "id": "bench_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 150,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.55,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "pectoralis_minor": 0.4,
+          "serratus_anterior": 0.3,
+          "triceps_medial": 0.3,
+          "rotator_cuff": 0.2
+        }
+      },
+      "seeds": {
+        "pushup": 86.666667,
+        "squat": 124.666667
+      },
+      "expectWeight": 57.5,
+      "name": "bench press seeds from twenty push-ups"
+    },
+    {
+      "bodyKg": 80.0,
+      "pushUpReps": 20,
+      "squatReps": 25,
+      "expectE1rm": {
+        "pushup": 86.666667,
+        "squat": 124.666667
+      },
+      "spec": {
+        "id": "squats",
+        "lo": 4,
+        "hi": 8,
+        "inc": 5.0,
+        "minW": 20.0,
+        "rest": 180,
+        "pattern": "squat",
+        "bw": 0.0,
+        "primary": {
+          "vastus_lateralis": 0.9,
+          "gluteus_maximus": 0.9,
+          "rectus_femoris": 0.8,
+          "vastus_medialis": 0.8
+        },
+        "secondary": {
+          "erector_spinae": 0.5,
+          "adductors": 0.4,
+          "biceps_femoris": 0.4,
+          "semitendinosus": 0.3,
+          "transverse_abdominis": 0.3,
+          "gluteus_medius": 0.3
+        }
+      },
+      "seeds": {
+        "pushup": 86.666667,
+        "squat": 124.666667
+      },
+      "expectWeight": 80.0,
+      "name": "squat seeds from twenty-five bodyweight squats"
+    },
+    {
+      "bodyKg": 80.0,
+      "pushUpReps": 20,
+      "squatReps": 25,
+      "expectE1rm": {
+        "pushup": 86.666667,
+        "squat": 124.666667
+      },
+      "spec": {
+        "id": "overhead_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 120,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "anterior_deltoid": 1.0,
+          "lateral_deltoid": 0.6,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "trapezius_upper": 0.4,
+          "rotator_cuff": 0.3,
+          "serratus_anterior": 0.3,
+          "rectus_abdominis": 0.2,
+          "triceps_medial": 0.2
+        }
+      },
+      "seeds": {
+        "pushup": 86.666667,
+        "squat": 124.666667
+      },
+      "expectWeight": 57.5,
+      "name": "overhead press seeds from the same push-ups"
+    },
+    {
+      "bodyKg": 80.0,
+      "pushUpReps": 20,
+      "squatReps": 25,
+      "expectE1rm": {
+        "pushup": 86.666667,
+        "squat": 124.666667
+      },
+      "spec": {
+        "id": "cable_fly",
+        "lo": 10,
+        "hi": 15,
+        "inc": 2.5,
+        "minW": 2.5,
+        "rest": 90,
+        "pattern": "",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0
+        },
+        "secondary": {
+          "anterior_deltoid": 0.3
+        }
+      },
+      "seeds": {
+        "pushup": 86.666667,
+        "squat": 124.666667
+      },
+      "expectWeight": 20.0,
+      "name": "an unmapped exercise starts on an empty bar"
+    },
+    {
+      "bodyKg": 80.0,
+      "pushUpReps": 20,
+      "squatReps": 25,
+      "expectE1rm": {
+        "pushup": 86.666667,
+        "squat": 124.666667
+      },
+      "spec": {
+        "id": "pull_ups",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 0.0,
+        "rest": 120,
+        "pattern": "pullup",
+        "bw": 1.0,
+        "primary": {
+          "latissimus_dorsi": 1.0,
+          "biceps_brachii": 0.6,
+          "teres_major": 0.6
+        },
+        "secondary": {
+          "rhomboids": 0.4,
+          "trapezius_mid": 0.4,
+          "brachialis": 0.4,
+          "forearm_flexors": 0.4,
+          "rectus_abdominis": 0.2
+        }
+      },
+      "seeds": {
+        "pushup": 86.666667,
+        "squat": 124.666667
+      },
+      "expectWeight": 0.0,
+      "name": "a pull-up has nothing to load"
+    },
+    {
+      "bodyKg": 80.0,
+      "pushUpReps": 0,
+      "squatReps": 0,
+      "expectE1rm": {
+        "pushup": 52.0,
+        "squat": 68.0
+      },
+      "spec": {
+        "id": "bench_press",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 20.0,
+        "rest": 150,
+        "pattern": "pushup",
+        "bw": 0.0,
+        "primary": {
+          "pectoralis_major": 1.0,
+          "anterior_deltoid": 0.55,
+          "triceps_lateral": 0.5
+        },
+        "secondary": {
+          "pectoralis_minor": 0.4,
+          "serratus_anterior": 0.3,
+          "triceps_medial": 0.3,
+          "rotator_cuff": 0.2
+        }
+      },
+      "seeds": {
+        "pushup": 52.0,
+        "squat": 68.0
+      },
+      "expectWeight": 35.0,
+      "name": "a calibration of zero push-ups still seeds the bar"
+    }
+  ]
+}
