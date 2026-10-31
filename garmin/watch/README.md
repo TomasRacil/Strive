@@ -95,17 +95,22 @@ watch itself: `GARMIN\GarminDevice.xml` contains the part number (for example
 
 ## Known issues (next session starts here)
 
-- **Pips do not fill / `setsFor()` returns 0.** The session log itself is fine —
-  `Session.setCount()` reached 5 in an earlier build, so `entries()` parses — but
-  `Session.setsFor(id)` matches nothing. The suspect is
-  `all[i][:id] == id`: comparing two Strings that came out of a Dictionary with
-  `==`. Try `.equals()` or compare lengths before the value, and check that the id
-  written by `Session.addSet` (from `Exercises.list()[:id]`) is the same string
-  object path as the one read back from storage.
 - The phone does not yet import a received session log into history; it displays
   it on the Settings card only.
-- Plan payload is still `id=weight;id=weight`. The bus carries Dictionaries, so
-  this can be replaced by a Map and the delimited parser deleted.
+- The watch screen is still the single-exercise prototype: one lift at a time,
+  no set confirmation sheet, no rest prompt, hardcoded target sets. The flows it
+  should follow are in `docs/watch-ux.md`.
+- The engine is merged but nothing on the wrist calls it yet: `StriveView.mc`
+  still uses `Progress.suggest()` rather than `Engine.nextLoad()`.
+
+Fixed and worth remembering, because they cost a session each:
+
+- **`setsFor()` counted nothing and the pips never filled.** `a == b` is false
+  for two equal Strings on this firmware, including two literals; `.equals()` is
+  true. All id comparison now goes through `Text.same()`. The tests that "proved"
+  the log was correct were themselves comparing with `==`, so they failed too.
+- **`"82.5".toNumber()` returns 82.** Decimals have to be parsed by hand.
+- **`String.find()` takes one argument**; `String.indexOf` does not exist.
 
 ## Layout
 
