@@ -11,10 +11,26 @@
 param(
     [string]$Device = "fenix847mm",
     [string]$Sdk = "",
+    [int]$LockTimeoutSeconds = 1800,
     [switch]$KeepSimulator
 )
 
 $ErrorActionPreference = "Stop"
+
+# monkeyc.bat shells out to java, which is not on PATH on a clean Windows shell.
+if (-not (Get-Command java -ErrorAction SilentlyContinue)) {
+    $jdk = Get-ChildItem "C:\Program Files\Eclipse Adoptium" -Directory -ErrorAction SilentlyContinue |
+        Where-Object { Test-Path (Join-Path $_.FullName "bin\java.exe") } |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+    if ($jdk) {
+        $env:JAVA_HOME = $jdk.FullName
+        $env:PATH = (Join-Path $jdk.FullName "bin") + ";" + $env:PATH
+    } else {
+        Write-Host "No java on PATH and no Adoptium JDK found. Install JDK 21." -ForegroundColor Red
+        exit 1
+    }
+}
 
 if ($Sdk -eq "") {
     $sdkConfig = Join-Path $env:APPDATA "Garmin\ConnectIQ\current-sdk.cfg"
@@ -37,25 +53,47 @@ if (-not (Test-Path $key)) {
 }
 
 New-Item -ItemType Directory -Force -Path build | Out-Null
+$lockPath = "build\.simlock"
 
-& $monkeyc -f test.jungle -d $Device -o "build\Strive-test.prg" -y $key -t
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Test build failed." -ForegroundColor Red
-    exit $LASTEXITCODE
+# One simulator at a time: a second monkeydo would push to the same instance and
+# interleave two suites.
+$deadline = (Get-Date).AddSeconds($LockTimeoutSeconds)
+$held = $false
+while (-not $held) {
+    try {
+        New-Item -ItemType Directory -Path $lockPath -ErrorAction Stop | Out-Null
+        $held = $true
+    } catch {
+        if ((Get-Date) -gt $deadline) {
+            Write-Host "Simulator lock held by another run for over $LockTimeoutSeconds s." -ForegroundColor Red
+            exit 1
+        }
+        Start-Sleep -Seconds 3
+    }
 }
 
-$running = Get-Process simulator -ErrorAction SilentlyContinue
-if (-not $running) {
-    Write-Host "Starting the Connect IQ simulator for $Device..."
-    $sim = Start-Process -FilePath $simulator -ArgumentList "-d", $Device -PassThru
-    Start-Sleep -Seconds 18
-}
+$startedSimulator = $false
+try {
+    & $monkeyc -f test.jungle -d $Device -o "build\Strive-test.prg" -y $key -t
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Test build failed." -ForegroundColor Red
+        exit $LASTEXITCODE
+    }
 
-& $monkeydo "build\Strive-test.prg" $Device /t
-$code = $LASTEXITCODE
+    if (-not (Get-Process simulator -ErrorAction SilentlyContinue)) {
+        Write-Host "Starting the Connect IQ simulator for $Device..."
+        Start-Process -FilePath $simulator -ArgumentList "-d", $Device | Out-Null
+        $startedSimulator = $true
+        Start-Sleep -Seconds 18
+    }
 
-if (-not $KeepSimulator) {
-    Get-Process simulator -ErrorAction SilentlyContinue | Stop-Process -Force
+    & $monkeydo "build\Strive-test.prg" $Device /t
+    $code = $LASTEXITCODE
+} finally {
+    if ($startedSimulator -and -not $KeepSimulator) {
+        Get-Process simulator -ErrorAction SilentlyContinue | Stop-Process -Force
+    }
+    Remove-Item -Recurse -Force $lockPath -ErrorAction SilentlyContinue
 }
 
 if ($code -ne 0) {

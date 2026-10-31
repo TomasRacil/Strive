@@ -14,6 +14,21 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# monkeyc.bat shells out to java, which is not on PATH on a clean Windows shell.
+if (-not (Get-Command java -ErrorAction SilentlyContinue)) {
+    $jdk = Get-ChildItem "C:\Program Files\Eclipse Adoptium" -Directory -ErrorAction SilentlyContinue |
+        Where-Object { Test-Path (Join-Path $_.FullName "bin\java.exe") } |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+    if ($jdk) {
+        $env:JAVA_HOME = $jdk.FullName
+        $env:PATH = (Join-Path $jdk.FullName "bin") + ";" + $env:PATH
+    } else {
+        Write-Host "No java on PATH and no Adoptium JDK found. Install JDK 21." -ForegroundColor Red
+        exit 1
+    }
+}
+
 # The SDK directory name carries a version and date, so read the active SDK from
 # the manager's config instead of hardcoding a path that will go stale.
 if ($Sdk -eq "") {
