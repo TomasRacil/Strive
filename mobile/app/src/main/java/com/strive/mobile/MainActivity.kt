@@ -17,6 +17,11 @@ class MainActivity : ComponentActivity() {
         val state = AppState(applicationContext)
         val watch = WatchRepository(applicationContext)
 
+        // A session finished on the watch is already in the store by the time
+        // this runs; this keeps the in-memory history the screens read in step
+        // with it instead of waiting for the next launch.
+        watch.onSessionSaved = { session -> state.importSessions(listOf(session)) }
+
         setContent {
             StriveApp(state = state, watch = watch)
         }

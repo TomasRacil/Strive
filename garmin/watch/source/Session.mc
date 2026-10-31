@@ -32,6 +32,12 @@ module Session {
         return "sess_log";
     }
 
+    // The id the phone upserts by. Generated when the session starts, so a set
+    // logged offline and delivered a day later still lands in the right session.
+    function sidKey() {
+        return "sess_sid";
+    }
+
     // ---- lifecycle -------------------------------------------------------
 
     function active() as Lang.Boolean {
@@ -59,6 +65,12 @@ module Session {
         App.Storage.setValue(startKey(), Time.now().value());
         App.Storage.setValue(indexKey(), 0);
         App.Storage.setValue(logKey(), "");
+        App.Storage.setValue(sidKey(), Bus.newId());
+    }
+
+    function sid() as Lang.String {
+        var value = App.Storage.getValue(sidKey());
+        return value == null ? "" : value;
     }
 
     // Clears the session. The log is read out first: end() must not be the
@@ -67,6 +79,7 @@ module Session {
         App.Storage.setValue(startKey(), 0);
         App.Storage.setValue(indexKey(), 0);
         App.Storage.setValue(logKey(), "");
+        App.Storage.setValue(sidKey(), "");
     }
 
     // ---- position in the exercise list -----------------------------------

@@ -67,6 +67,12 @@ module Plan {
         return App.Storage.getValue(key(id));
     }
 
+    // The framed bus carries the load in a `rec` message, which has nowhere else
+    // to land; this keeps the existing screen reading from one place.
+    function setWeight(id, kg) as Void {
+        App.Storage.setValue(key(id), kg);
+    }
+
     // Compact report of what the parser could see: pairs found, fields in the
     // first pair, cleaned id. "rd empty" says the result but not which stage
     // failed, and each stage needs a different fix.

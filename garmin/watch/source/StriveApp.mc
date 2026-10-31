@@ -1,9 +1,11 @@
 using Toybox.Application as App;
 using Toybox.WatchUi as Ui;
 using Toybox.Communications as Comm;
-using Toybox.Timer as Timer;
 using Toybox.Lang;
 
+// Entry point. Everything that crosses to the phone goes through Bus, and
+// everything Bus emits goes through the persistent outbox, so nothing here has
+// to know how the transport behaves.
 class StriveApp extends App.AppBase {
 
     var view;
@@ -12,18 +14,46 @@ class StriveApp extends App.AppBase {
     // reference from a static function, so the pacing timer needs an object.
     static var outbox = new Outbox();
 
-    static function enqueue(text) as Void {
-        outbox.enqueue(text);
+    static function enqueue(id, body) as Void {
+        outbox.add(id, body);
+    }
+
+    // Acks and rejections, which are sent once and never persisted.
+    static function enqueueRaw(text) as Void {
+        outbox.addRaw(text);
+    }
+
+    static function acked(id) as Void {
+        outbox.acked(id);
+    }
+
+    static function rejected(id) as Void {
+        outbox.failed(id);
     }
 
     static function onSent() as Void {
         outbox.onSent();
     }
 
-    // Hands the finished session's log to the outbox. One message, queued and
-    // paced: the bus drops bursts silently, and a lost log is a lost workout.
-    static function syncLog(text) as Void {
-        outbox.enqueue(text);
+    // Called from onShow: a screen the user opened is the best evidence the
+    // phone may be back, and a queue that only drained at launch would hold a
+    // workout until the next reboot.
+    static function drain() as Void {
+        outbox.pump();
+    }
+
+    // Hands the finished session to the bus. One message, queued and acked: a
+    // lost log is a lost workout, so it is never sent and forgotten.
+    static function syncLog(logText) as Void {
+        Bus.sendEnd(logText);
+    }
+
+    static function syncStart() as Void {
+        Bus.sendStart();
+    }
+
+    static function syncSet() as Void {
+        Bus.sendSet(Session.setCount() - 1);
     }
 
     function initialize() {
@@ -36,49 +66,25 @@ class StriveApp extends App.AppBase {
         return [ view, new StriveDelegate(view) ];
     }
 
+    // The bus is the only transport: the HTTP probes that used to fire here were
+    // an experiment from before the companion message bus was proven, and they
+    // cost two requests per launch.
     function onStart(state) {
         Comm.registerForPhoneAppMessages(method(:onPhoneAppMessage));
-        probeNetwork();
+
+        // Anything half-arrived before the app died is either finished by the
+        // next chunk or expired; either way it must not sit in Storage for ever.
+        Bus.expirePartials();
+
+        // The queue is drained on start, not when the user opens a screen: a
+        // session logged offline yesterday goes out as soon as the app is up.
+        outbox.load();
+        Bus.sendReady();
     }
 
-    // Decisive experiment for sync. Garmin Connect's companion message bus is
-    // broken (CIQQA-4631), but a plain HTTPS request goes through a different
-    // Garmin service. A status code here means the watch can reach a server and
-    // we have a working channel that does not depend on that bus.
-    // Two hosts are probed because a 4xx from one says nothing about the other.
-    function probeNetwork() {
-        request("https://httpbin.org/status/200", :onProbeA);
-        request("https://postman-echo.com/status/200", :onProbeB);
-    }
-
-    function request(url, callback) {
-        var options = {
-            :method => Comm.HTTP_REQUEST_METHOD_GET,
-            :responseType => Comm.HTTP_RESPONSE_CONTENT_TYPE_TEXT_PLAIN
-        };
-        Comm.makeWebRequest(url, null, options, method(callback));
-    }
-
-    function onProbeA(responseCode as Lang.Number, data as Lang.String or Null) as Void {
-        App.Storage.setValue("net_a", responseCode);
-        if (view != null) {
-            Ui.requestUpdate();
-        }
-    }
-
-    function onProbeB(responseCode as Lang.Number, data as Lang.String or Null) as Void {
-        App.Storage.setValue("net_b", responseCode);
-        if (view != null) {
-            Ui.requestUpdate();
-        }
-    }
-
-    function sendToPhone(text) {
-        Comm.transmit(text, null, new PhoneListener());
-    }
-
-    // The phone sends a delimited string of exercise id -> weight. A Dictionary
-    // is also handled in case the transport ever delivers one.
+    // The phone's whole side of the protocol arrives here as one raw string.
+    // Parsing, chunking, dedupe and acking all happen in Bus; this only reports
+    // what was applied so the screen can redraw.
     function onPhoneAppMessage(msg as Comm.PhoneAppMessage) as Void {
         // Receipt counter, shown on screen. It separates "the message never
         // arrived" from "it arrived and the parsing is wrong".
@@ -89,44 +95,21 @@ class StriveApp extends App.AppBase {
         App.Storage.setValue("msg_count", count + 1);
 
         var data = msg.data;
-        if (data == null) {
+        if (!(data instanceof Lang.String)) {
             return;
         }
 
-        if (data instanceof Lang.String) {
-            var text = data;
-
-            // Size probe: "L<declared>:<payload>". The watch reports what actually
-            // arrived against what was declared, so truncation is visible instead
-            // of being mistaken for a parse failure.
-            if (text.find("L") == 0) {
-                var parts = Text.split(text, ":");
-                if (parts.size() == 2) {
-                    var declared = parts[0].substring(1, parts[0].length());
-                    App.Storage.setValue(
-                        "ble_dbg",
-                        "rx " + parts[1].length().toString() + "/" + declared
-                    );
-                }
-            } else {
-                App.Storage.setValue(
-                    "ble_dbg",
-                    "msg " + (text.length() > 12 ? text.substring(0, 12) : text)
-                );
-            }
-
-            Plan.replaceFromText(data);
-        } else if (data instanceof Lang.Dictionary) {
-            App.Storage.setValue("ble_dbg", "msg dict");
-            Plan.replaceFromDictionary(data);
-        } else {
+        var applied = Bus.receive(data);
+        if (applied == null) {
             return;
         }
 
+        // A plan, a library or a recommendation can change the load on screen,
+        // so the view re-reads it rather than waiting for the next launch.
         if (view != null) {
-            // A plan can change the load on screen, so the view re-reads it
-            // rather than waiting for the next launch.
-            view.reloadFromPlan();
+            if (Text.same(applied, "plan") || Text.same(applied, "lib") || Text.same(applied, "rec")) {
+                view.reloadFromPlan();
+            }
             Ui.requestUpdate();
         }
     }
@@ -140,7 +123,7 @@ class PhoneListener extends Comm.ConnectionListener {
     }
 
     // Both outcomes release the outbox: a failed send must not stop the queue,
-    // and success is the signal that the next message may go.
+    // and the gap to the next message is measured from the send, not the ack.
     function onComplete() as Void {
         StriveApp.onSent();
     }
