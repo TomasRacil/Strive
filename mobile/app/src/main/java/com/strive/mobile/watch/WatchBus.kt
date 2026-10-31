@@ -293,14 +293,14 @@ class WatchBus(
 
     private fun apply(kind: String, payload: JSONObject?): String? {
         when (kind) {
-            // The watch says it is alive and speaking v1; the phone answers with
-            // whatever it holds, so a reconnect needs no user action.
-            "hello" -> {
-                resendSnapshots()
-                return kind
-            }
-            "ready" -> {
-                resendSnapshots()
+            // The watch says it is alive and speaking v1. What to re-send is the
+            // listener's call, not the bus's: only the phone knows which of its
+            // snapshots is newer than the versions the watch reports. A bus with
+            // nobody listening still re-sends everything, so a bare transport
+            // test keeps the reconnect behaviour.
+            "hello", "ready" -> {
+                val listener = onMessage
+                if (listener == null) resendSnapshots() else listener.invoke(kind, payload)
                 return kind
             }
             "ping" -> {

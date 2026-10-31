@@ -370,6 +370,65 @@ class WatchBusTest {
         assertEquals(1, bus.failedCount)
     }
 
+    // ---- reconnect --------------------------------------------------------
+
+    @Test
+    fun `ready is handed to the listener with the versions the watch holds`() {
+        val transport = FakeTransport()
+        val bus = bus(transport)
+
+        var kind: String? = null
+        var payload: JSONObject? = null
+        bus.onMessage = { k, p ->
+            kind = k
+            payload = p
+        }
+
+        bus.onIncoming(
+            "1|ready001|0|1|{\"k\":\"ready\",\"n\":1,\"t\":0," +
+                "\"p\":{\"seq\":4,\"libV\":2,\"planV\":3,\"pending\":0,\"bench\":false}}"
+        )
+
+        // What to re-send depends on what the phone holds, which only the
+        // listener knows, so the payload has to reach it.
+        assertEquals("ready", kind)
+        assertEquals(3L, payload?.optLong("planV"))
+        assertTrue("the frame is still acked", transport.sent.any { it.startsWith("A|ready001|") })
+    }
+
+    @Test
+    fun `hello with a listener is not answered by the bus itself`() {
+        val transport = FakeTransport()
+        val bus = bus(transport)
+        bus.onMessage = { _, _ -> }
+
+        bus.sendSnapshot("plan", planPayload())
+        assertEquals(1, transport.sent.size)
+
+        // The bus must not push every snapshot behind the listener's back: the
+        // listener decides, and a second copy would only be a burst.
+        now += WatchBus.GAP_MS
+        bus.onIncoming("1|hello001|0|1|{\"k\":\"hello\",\"n\":1,\"t\":0}")
+
+        assertEquals("only the ack leaves", 2, transport.sent.size)
+        assertTrue(transport.sent[1].startsWith("A|hello001|"))
+    }
+
+    @Test
+    fun `hello with nobody listening still re-sends the snapshots`() {
+        val transport = FakeTransport()
+        val bus = bus(transport)
+
+        bus.sendSnapshot("plan", planPayload())
+        now += WatchBus.GAP_MS
+        bus.onIncoming("1|hello001|0|1|{\"k\":\"hello\",\"n\":1,\"t\":0}")
+
+        // Two frames of the same plan: the original, then the re-send the bare
+        // bus does on its own so a reconnect is never a silent dead end.
+        val planFrames = transport.sent.count { it.contains("\"k\":\"plan\"") }
+        assertEquals(2, planFrames)
+    }
+
     // ---- body shape ------------------------------------------------------
 
     @Test
