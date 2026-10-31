@@ -87,8 +87,17 @@ try {
         Start-Sleep -Seconds 18
     }
 
-    & $monkeydo "build\Strive-test.prg" $Device /t
-    $code = $LASTEXITCODE
+    $raw = & $monkeydo "build\Strive-test.prg" $Device /t 2>&1 | Out-String
+    Write-Host $raw
+
+    # monkeydo exits 0 whether the suite passed or failed, so the summary line is
+    # the only honest signal. Requiring the explicit PASSED line also catches the
+    # case where monkeydo never reached the tests at all.
+    if ($raw -match 'PASSED \(passed=\d+, failed=0, errors=0\)') {
+        $code = 0
+    } else {
+        $code = 1
+    }
 } finally {
     if ($startedSimulator -and -not $KeepSimulator) {
         Get-Process simulator -ErrorAction SilentlyContinue | Stop-Process -Force
