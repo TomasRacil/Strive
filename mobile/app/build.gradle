@@ -44,6 +44,15 @@ android {
         }
     }
 
+    sourceSets {
+        // shared/engine-vectors.json is the contract with the watch port: one
+        // file, both test suites, so neither side can quietly change a formula.
+        // It lands on the test classpath as /engine-vectors.json.
+        test {
+            resources.srcDirs += ['../../shared']
+        }
+    }
+
     packaging {
         resources {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
