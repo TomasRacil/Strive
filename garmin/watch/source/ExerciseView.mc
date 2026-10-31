@@ -2,6 +2,7 @@ using Toybox.WatchUi as Ui;
 using Toybox.Graphics as Gfx;
 using Toybox.Timer as Timer;
 using Toybox.Time as Time;
+using Toybox.Application as App;
 using Toybox.Lang;
 
 // One lift.
@@ -108,7 +109,43 @@ class ExerciseView extends Ui.View {
 
     // ---- drawing ---------------------------------------------------------
 
+    // Guarded for the same reason as the picker: an exception while drawing
+    // must not take the session down, and the message is the only stack a wrist
+    // can show.
     function onUpdate(dc) {
+        var stored = App.Storage.getValue("crash");
+        if (stored != null) {
+            showMessage(dc, stored.toString());
+            return;
+        }
+
+        try {
+            paint(dc);
+        } catch (e) {
+            var message = e.getErrorMessage();
+            if (message == null) {
+                message = "unreadable";
+            }
+            App.Storage.setValue("crash", message);
+            showMessage(dc, message);
+        }
+    }
+
+    function showMessage(dc, message) {
+        var width = dc.getWidth();
+        var height = dc.getHeight();
+
+        dc.setColor(Gfx.COLOR_BLACK, Gfx.COLOR_BLACK);
+        dc.clear();
+        dc.setColor(Gfx.COLOR_RED, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(width / 2, height * 0.26, Gfx.FONT_XTINY, "EXERCISE", Gfx.TEXT_JUSTIFY_CENTER);
+        dc.setColor(Gfx.COLOR_WHITE, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(width / 2, height * 0.42, Gfx.FONT_XTINY, Text.fit(message, 24), Gfx.TEXT_JUSTIFY_CENTER);
+        dc.setColor(Gfx.COLOR_LT_GRAY, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(width / 2, height * 0.60, Gfx.FONT_XTINY, "BACK to leave", Gfx.TEXT_JUSTIFY_CENTER);
+    }
+
+    function paint(dc) {
         var width = dc.getWidth();
         var height = dc.getHeight();
 

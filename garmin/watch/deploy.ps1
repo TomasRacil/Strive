@@ -26,18 +26,29 @@ $full = (Resolve-Path $Source).Path
 $shell = New-Object -ComObject Shell.Application
 $pc = $shell.NameSpace(17)   # ssfDRIVES: "This PC", which is where MTP devices live
 
-$watch = $null
-foreach ($item in $pc.Items()) {
-    if ($DeviceName -ne "") {
-        if ($item.Name -like "*$DeviceName*") { $watch = $item; break }
-    } elseif ($item.Name -match 'fenix|Forerunner|Garmin|quatix|tactix|epix') {
-        $watch = $item
-        break
+# MTP only exposes the device while the watch is awake and unlocked, and it drops
+# off the moment the screen sleeps. Poll rather than failing on the first look.
+function Find-Watch([string]$name) {
+    for ($i = 0; $i -lt 20; $i++) {
+        $found = $null
+        foreach ($item in (New-Object -ComObject Shell.Application).NameSpace(17).Items()) {
+            if ($name -ne "") {
+                if ($item.Name -like "*$name*") { $found = $item; break }
+            } elseif ($item.Name -match 'fenix|Forerunner|Garmin|quatix|tactix|epix') {
+                $found = $item
+                break
+            }
+        }
+        if ($found) { return $found }
+        Start-Sleep -Seconds 3
     }
+    return $null
 }
 
+$watch = Find-Watch $DeviceName
+
 if ($null -eq $watch) {
-    Write-Host "No Garmin device under This PC. Unlock the watch, plug it in, and pick 'File transfer' if it asks." -ForegroundColor Red
+    Write-Host "No Garmin device under This PC after 60 s. Unlock the watch, keep the screen awake, and plug it in with a data cable." -ForegroundColor Red
     exit 1
 }
 Write-Host "Device: $($watch.Name)"
@@ -79,10 +90,17 @@ $leaf = Split-Path $full -Leaf
 Write-Host "Copying $leaf to $($watch.Name)\Internal Storage\GARMIN\APPS ..."
 $target.CopyHere($full, 0x14)   # 0x14 = no progress dialog, no confirmation
 
-Start-Sleep -Seconds 2
+# MTP reports the size late, and a copy interrupted by the watch sleeping shows up
+# as a 0-byte entry that the watch then refuses to run. Poll for the real size
+# instead of believing the copy call.
 $landed = $null
-foreach ($child in $target.Items()) {
-    if ($child.Name -ieq $leaf) { $landed = $child; break }
+for ($i = 0; $i -lt 10; $i++) {
+    Start-Sleep -Seconds 3
+    $landed = $null
+    foreach ($child in $target.Items()) {
+        if ($child.Name -ieq $leaf) { $landed = $child; break }
+    }
+    if ($landed -and $landed.Size -gt 0) { break }
 }
 
 if ($null -eq $landed) {
@@ -90,5 +108,11 @@ if ($null -eq $landed) {
     exit 1
 }
 
-Write-Host "Copied $($landed.Name) ($($landed.Size) bytes)." -ForegroundColor Green
+$expected = (Get-Item $full).Length
+if ($landed.Size -ne $expected) {
+    Write-Host "Copied but the device reports $($landed.Size) of $expected bytes. Keep the watch awake and run this again - a truncated .prg is removed by the watch." -ForegroundColor Yellow
+    exit 1
+}
+
+Write-Host "Copied $($landed.Name) ($($landed.Size) bytes, matches the build)." -ForegroundColor Green
 Write-Host "Restart the watch, then find Strive at the end of the activity list."

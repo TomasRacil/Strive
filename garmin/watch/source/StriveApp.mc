@@ -152,6 +152,10 @@ class StriveApp extends App.AppBase {
     // an experiment from before the companion message bus was proven, and they
     // cost two requests per launch.
     function onStart(state) {
+        // The bus is stubbed until here, so a unit-test build can never open the
+        // radio: a real transmit in the simulator raises a modal dialog that
+        // blocks the run. The app asks for the radio explicitly, once.
+        Wire.useRadio();
         Comm.registerForPhoneAppMessages(method(:onPhoneAppMessage));
 
         // Anything half-arrived before the app died is either finished by the

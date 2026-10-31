@@ -1,6 +1,7 @@
 using Toybox.WatchUi as Ui;
 using Toybox.Graphics as Gfx;
 using Toybox.Time as Time;
+using Toybox.Application as App;
 using Toybox.Lang;
 
 // Pick an exercise.
@@ -23,20 +24,41 @@ class PickerView extends Ui.View {
     var cursor;
     var top;
 
+    // The ranking is the expensive part of a frame - Engine.rank walks every
+    // spec against every set - so it is computed once per visit rather than
+    // once per row and once per keypress. Without the cache a single DOWN
+    // re-ranks the library a dozen times.
+    var cachedRanked;
+    var cachedAll;
+
     function initialize(model) {
         View.initialize();
         loop = model;
         mode = 0;
         cursor = 0;
         top = 0;
+        cachedRanked = null;
+        cachedAll = null;
     }
 
     function rankedRows() as Lang.Array {
-        return loop.ranked(Time.now().value(), RANKED_ROWS);
+        Crumb.at("rank");
+        if (cachedRanked == null) {
+            cachedRanked = loop.ranked(Time.now().value(), RANKED_ROWS);
+        }
+        Crumb.at("rank ok");
+        return cachedRanked;
     }
 
     function rows() as Lang.Array {
-        return mode == 0 ? rankedRows() : loop.all();
+        return mode == 0 ? rankedRows() : all();
+    }
+
+    function all() as Lang.Array {
+        if (cachedAll == null) {
+            cachedAll = loop.all();
+        }
+        return cachedAll;
     }
 
     // The ranked mode has one extra row: "All exercises >".
@@ -50,6 +72,7 @@ class PickerView extends Ui.View {
     }
 
     function move(direction) as Void {
+        Crumb.at("mv");
         var moved = cursor + direction;
         if (moved < 0) {
             moved = 0;
@@ -74,9 +97,11 @@ class PickerView extends Ui.View {
         if (top < 0) {
             top = 0;
         }
+        Crumb.at("mv ok");
     }
 
     function take() as Void {
+        Crumb.at("take");
         if (isAllRow()) {
             mode = 1;
             cursor = 0;
@@ -92,6 +117,7 @@ class PickerView extends Ui.View {
 
         var now = Time.now().value();
         loop.pick(list[cursor][:id], now);
+        Crumb.at("picked");
         Ui.pushView(new ExerciseView(loop), new ExerciseDelegate(loop), Ui.SLIDE_LEFT);
     }
 
@@ -104,10 +130,17 @@ class PickerView extends Ui.View {
             Ui.requestUpdate();
             return true;
         }
+        // Leaving clears the error, or the next visit opens on a stale message.
+        App.Storage.deleteValue("crash");
         return false;
     }
 
     function onShow() as Void {
+        // The ranking depends on the library and the history, so it is rebuilt
+        // when the screen comes back rather than kept from the last visit.
+        cachedRanked = null;
+        cachedAll = null;
+
         // The finish cascade ends here: the menu popped, the exercise popped and
         // the picker popped, and this is the screen left holding the finished
         // session.
@@ -118,7 +151,48 @@ class PickerView extends Ui.View {
         Ui.requestUpdate();
     }
 
+    // A crash here costs the workout, so the draw is guarded: an exception is
+    // caught, written to Storage and shown on screen instead of taking the app
+    // down with it. Without the message on the watch itself there is no way to
+    // read a stack off a wrist.
     function onUpdate(dc) {
+        var stored = App.Storage.getValue("crash");
+        if (stored != null) {
+            showMessage(dc, stored.toString());
+            return;
+        }
+
+        try {
+            paint(dc);
+        } catch (e) {
+            var message = e.getErrorMessage();
+            if (message == null) {
+                message = "unreadable";
+            }
+            App.Storage.setValue("crash", message);
+            showMessage(dc, message);
+        }
+    }
+
+    // The message is shown where the user is already looking, and kept in
+    // Storage so a crash in a key handler (which never reaches onUpdate) still
+    // reaches the screen on the next redraw.
+    function showMessage(dc, message) {
+        var width = dc.getWidth();
+        var height = dc.getHeight();
+
+        dc.setColor(Gfx.COLOR_BLACK, Gfx.COLOR_BLACK);
+        dc.clear();
+        dc.setColor(Gfx.COLOR_RED, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(width / 2, height * 0.26, Gfx.FONT_XTINY, "PICKER", Gfx.TEXT_JUSTIFY_CENTER);
+        dc.setColor(Gfx.COLOR_WHITE, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(width / 2, height * 0.42, Gfx.FONT_XTINY, Text.fit(message, 24), Gfx.TEXT_JUSTIFY_CENTER);
+        dc.setColor(Gfx.COLOR_LT_GRAY, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(width / 2, height * 0.60, Gfx.FONT_XTINY, "BACK to leave", Gfx.TEXT_JUSTIFY_CENTER);
+    }
+
+    function paint(dc) {
+        Crumb.at("paint");
         var width = dc.getWidth();
         var height = dc.getHeight();
 
@@ -142,6 +216,7 @@ class PickerView extends Ui.View {
 
         dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
         dc.drawText(width / 2, height * 0.86, Gfx.FONT_XTINY, "START: pick  BACK: up", Gfx.TEXT_JUSTIFY_CENTER);
+        Crumb.at("paint ok");
     }
 
     function drawRow(dc, width, y, index, list, now) {
@@ -199,20 +274,28 @@ class PickerDelegate extends Ui.InputDelegate {
     function onKey(evt) {
         var key = evt.getKey();
 
-        if (key == Ui.KEY_UP) {
-            view.move(-1);
-            Ui.requestUpdate();
-            return true;
-        }
+        try {
+            if (key == Ui.KEY_UP) {
+                view.move(-1);
+                Ui.requestUpdate();
+                return true;
+            }
 
-        if (key == Ui.KEY_DOWN) {
-            view.move(1);
-            Ui.requestUpdate();
-            return true;
-        }
+            if (key == Ui.KEY_DOWN) {
+                view.move(1);
+                Ui.requestUpdate();
+                return true;
+            }
 
-        if (key == Ui.KEY_ENTER) {
-            view.take();
+            if (key == Ui.KEY_ENTER) {
+                view.take();
+                return true;
+            }
+        } catch (e) {
+            // Keep the app alive and let the view show what went wrong: a
+            // keypress that throws is a crash the user cannot read.
+            App.Storage.setValue("crash", e.getErrorMessage());
+            Ui.requestUpdate();
             return true;
         }
 

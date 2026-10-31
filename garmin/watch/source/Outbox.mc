@@ -11,10 +11,18 @@ using Toybox.Timer as Timer;
 // so nothing may be sent while another send is in flight, and every send waits
 // out a gap. Routing all of it through one object is also what lets a unit test
 // capture what would have gone out without a radio, and without a timer.
+// A real transmit in the simulator raises a modal "no data connection" dialog
+// that blocks the whole run, so the radio is OFF unless the app asks for it.
+// Defaulting to the stub means a test that forgets to reset still cannot wedge
+// the suite; StriveApp.onStart turns the radio back on.
 module Wire {
 
-    var testing = false;
+    var testing = true;
     var sent = null;
+
+    function useRadio() as Void {
+        testing = false;
+    }
 
     function reset() as Void {
         testing = true;
@@ -23,6 +31,9 @@ module Wire {
 
     function send(text) as Void {
         if (testing) {
+            if (sent == null) {
+                sent = [] as Lang.Array<Lang.String>;
+            }
             sent.add(text);
             return;
         }

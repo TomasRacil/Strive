@@ -55,6 +55,14 @@ class HomeView extends Ui.View {
 
         dc.setColor(Gfx.COLOR_DK_GRAY, Gfx.COLOR_TRANSPARENT);
         dc.drawText(width / 2, height * 0.78, Gfx.FONT_XTINY, "START: open", Gfx.TEXT_JUSTIFY_CENTER);
+
+        // The last breadcrumb, so a crash on another screen leaves a trace that
+        // survives it.
+        var crumb = Crumb.last();
+        if (crumb != null) {
+            dc.setColor(Gfx.COLOR_ORANGE, Gfx.COLOR_TRANSPARENT);
+            dc.drawText(width / 2, height * 0.90, Gfx.FONT_XTINY, Text.fit(crumb, 20), Gfx.TEXT_JUSTIFY_CENTER);
+        }
     }
 }
 
