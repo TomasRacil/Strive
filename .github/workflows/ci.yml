@@ -37,7 +37,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      # No android-actions/setup-android: ubuntu-latest already ships the SDK and
+      # cmdline-tools at $ANDROID_HOME, and that action's default package list
+      # asks for the legacy "tools" package, which Google has removed - it fails
+      # with "Failed to find package 'tools'".
       - name: Unit tests
         working-directory: mobile
         run: ./gradlew :app:testDebugUnitTest --console=plain
