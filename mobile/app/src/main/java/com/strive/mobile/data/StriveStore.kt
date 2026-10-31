@@ -24,7 +24,10 @@ class StriveStore(context: Context) {
             Settings(
                 theme = o.optString("theme", "system"),
                 unit = o.optString("unit", "kg"),
-                lang = o.optString("lang", "en")
+                lang = o.optString("lang", "en"),
+                // Absent in settings saved before body mass existed: the engine's
+                // own assumption is the honest answer until calibration runs.
+                bodyKg = o.optDouble("bodyKg", Engine.DEFAULT_BODY_KG)
             )
         }.getOrDefault(Settings())
     }
@@ -34,6 +37,7 @@ class StriveStore(context: Context) {
             .put("theme", settings.theme)
             .put("unit", settings.unit)
             .put("lang", settings.lang)
+            .put("bodyKg", settings.bodyKg)
         prefs.edit().putString(KEY_SETTINGS, o.toString()).apply()
     }
 
@@ -208,39 +212,9 @@ class StriveStore(context: Context) {
         prefs.edit().putString(KEY_ROUTINES, arr.toString()).apply()
     }
 
-    // ------------------------------------------------------------- progression
-
-    fun loadProgression(): Map<String, ProgressionEntry> {
-        val raw = prefs.getString(KEY_PROGRESSION, null) ?: return emptyMap()
-        return runCatching {
-            val o = JSONObject(raw)
-            o.keys().asSequence().associateWith { key ->
-                val e = o.getJSONObject(key)
-                ProgressionEntry(
-                    weightKg = e.optDouble("weightKg", 0.0),
-                    completed = e.optBoolean("completed", false)
-                )
-            }
-        }.getOrDefault(emptyMap())
-    }
-
-    fun saveProgression(map: Map<String, ProgressionEntry>) {
-        val o = JSONObject()
-        map.forEach { (key, entry) ->
-            o.put(
-                key,
-                JSONObject()
-                    .put("weightKg", entry.weightKg)
-                    .put("completed", entry.completed)
-            )
-        }
-        prefs.edit().putString(KEY_PROGRESSION, o.toString()).apply()
-    }
-
     private companion object {
         const val KEY_SETTINGS = "settings"
         const val KEY_SESSIONS = "sessions"
-        const val KEY_PROGRESSION = "progression"
         const val KEY_EXERCISES = "exercises"
         const val KEY_ROUTINES = "routines"
     }

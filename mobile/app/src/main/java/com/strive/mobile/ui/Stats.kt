@@ -1,10 +1,9 @@
 package com.strive.mobile.ui
 
 import com.strive.mobile.data.Exercise
-import com.strive.mobile.data.Progression
-import com.strive.mobile.data.ProgressionEntry
 import com.strive.mobile.data.Session
 import com.strive.mobile.data.SetEntry
+import com.strive.mobile.data.TrainingAdvice
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -158,8 +157,8 @@ object Stats {
 
     /**
      * Picks today's lifts: whatever has had the least work recently, weighted by
-     * how long it has been since that muscle was trained, with a suggested load
-     * from the same double progression the rest of the app uses.
+     * how long it has been since that muscle was trained, with the suggested load
+     * coming from the engine so the home card and the train screen agree.
      *
      * Deliberately simple and explainable - a recommendation you cannot justify
      * to yourself is worse than no recommendation.
@@ -167,7 +166,7 @@ object Stats {
     fun recommend(
         exercises: List<Exercise>,
         sessions: List<Session>,
-        progression: Map<String, ProgressionEntry>,
+        bodyKg: Double,
         fallbackKg: Double,
         limit: Int = 5
     ): List<Recommendation> {
@@ -235,7 +234,9 @@ object Stats {
             .map { exercise ->
                 Recommendation(
                     exercise = exercise,
-                    weightKg = Progression.suggest(progression[exercise.id], fallbackKg),
+                    weightKg = TrainingAdvice
+                        .advice(exercise, sessions, fallbackKg, bodyKg)
+                        .weightKg,
                     reason = reason(exercise)
                 )
             }
