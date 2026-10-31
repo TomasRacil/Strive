@@ -94,6 +94,5 @@ function testPlanJsonIgnoresJunk(logger) as Lang.Boolean {
 
 (:test)
 function testClockFormatting(logger) as Lang.Boolean {
-    var view = new StriveView();
-    return Text.same(view.clockText(0), "0:00") && Text.same(view.clockText(65), "1:05") && Text.same(view.clockText(600), "10:00");
+    return Text.same(Text.clock(0), "0:00") && Text.same(Text.clock(65), "1:05") && Text.same(Text.clock(600), "10:00");
 }
