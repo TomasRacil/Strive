@@ -306,7 +306,7 @@ function testOutboxAckRemovesEntry(logger) as Lang.Boolean {
 
     var ok = box.pending() == 0 &&
         App.Storage.getValue("ob_" + id) == null &&
-        Text.same(App.Storage.getValue("ob_ids"), "");
+        App.Storage.getValue("ob_ids") == null;
     logger.debug("pending after ack=" + box.pending().toString());
     return ok;
 }
@@ -381,6 +381,207 @@ function testOutboxKeepsOrderAcrossRestart(logger) as Lang.Boolean {
     ok = ok && Text.same(restarted.order[2]["id"], "cccc0003");
 
     logger.debug("order size=" + restarted.order.size().toString());
+    return ok;
+}
+
+// ---- outbox cap and storage guard ----------------------------------------
+
+// A body in the shape Bus writes, with the kind the drop policy reads.
+function outboxBody(kind, n) as Lang.String {
+    return "{\"k\":\"" + kind + "\",\"n\":" + n.toString() + ",\"t\":0,\"p\":{}}";
+}
+
+function outboxId(prefix, n) as Lang.String {
+    return prefix + n.toString();
+}
+
+// The queue is bounded: an offline week cannot grow it until Storage throws.
+// The oldest frame goes first, because it is the one the phone is least likely
+// to still want.
+(:test)
+function testOutboxCapDropsOldest(logger) as Lang.Boolean {
+    busClear();
+
+    var box = new Outbox();
+    for (var i = 0; i < OutboxLimits.PENDING; i++) {
+        box.add(outboxId("ca", i), outboxBody("set", i));
+    }
+
+    if (box.pending() != OutboxLimits.PENDING) {
+        logger.debug("not filled: pending=" + box.pending().toString());
+        return false;
+    }
+
+    box.add(outboxId("ca", 99), outboxBody("set", 99));
+
+    var oldest = outboxId("ca", 0);
+    var newest = outboxId("ca", 99);
+    var ok = box.pending() == OutboxLimits.PENDING &&
+        box.droppedCount() == 1 &&
+        box.triesFor(oldest) == -1 &&
+        box.triesFor(newest) != -1 &&
+        App.Storage.getValue("ob_" + oldest) == null &&
+        App.Storage.getValue("ob_" + newest) != null;
+
+    logger.debug("cap pending=" + box.pending().toString() + " dropped=" + box.droppedCount().toString());
+    return ok;
+}
+
+// An `end` closes a session, so it gets in even when the queue is full, and it
+// gets in at the cost of a `set`.
+(:test)
+function testOutboxCapAdmitsEndOverSet(logger) as Lang.Boolean {
+    busClear();
+
+    var box = new Outbox();
+    for (var i = 0; i < OutboxLimits.PENDING; i++) {
+        box.add(outboxId("cb", i), outboxBody("set", i));
+    }
+
+    box.add("cbend", outboxBody("end", 100));
+
+    var ok = box.pending() == OutboxLimits.PENDING &&
+        box.triesFor("cbend") != -1 &&
+        box.triesFor(outboxId("cb", 0)) == -1 &&
+        box.droppedCount() == 1 &&
+        App.Storage.getValue("ob_cbend") != null &&
+        App.Storage.getValue("ob_" + outboxId("cb", 0)) == null;
+
+    logger.debug("end admitted pending=" + box.pending().toString() + " dropped=" + box.droppedCount().toString());
+    return ok;
+}
+
+// The other half of that rule: with nothing but `end`s left to give up, the
+// incoming `set` is the frame that loses. A session whose log arrived without
+// its closing frame is worse than a session with one set missing.
+(:test)
+function testOutboxCapRefusesSetWhenOnlyEndsRemain(logger) as Lang.Boolean {
+    busClear();
+
+    var box = new Outbox();
+    for (var i = 0; i < OutboxLimits.PENDING; i++) {
+        box.add(outboxId("cc", i), outboxBody("end", i));
+    }
+
+    box.add("ccset", outboxBody("set", 100));
+
+    var ok = box.pending() == OutboxLimits.PENDING &&
+        box.triesFor("ccset") == -1 &&
+        box.triesFor(outboxId("cc", 0)) != -1 &&
+        box.droppedCount() == 1 &&
+        App.Storage.getValue("ob_ccset") == null;
+
+    logger.debug("set refused pending=" + box.pending().toString() + " dropped=" + box.droppedCount().toString());
+    return ok;
+}
+
+// A store written before the cap existed can come back longer than it.
+(:test)
+function testOutboxLoadTrimsToCap(logger) as Lang.Boolean {
+    busClear();
+
+    var ids = [] as Lang.Array<Lang.String>;
+    var extra = 5;
+    for (var i = 0; i < OutboxLimits.PENDING + extra; i++) {
+        var id = outboxId("cd", i);
+        App.Storage.setValue("ob_" + id, Json.write({"b" => outboxBody("set", i), "f" => false, "r" => 0}));
+        ids.add(id);
+    }
+    App.Storage.setValue("ob_ids", Bus.join(ids));
+
+    var box = new Outbox();
+    box.load();
+
+    var ok = box.pending() == OutboxLimits.PENDING &&
+        box.droppedCount() == extra &&
+        box.triesFor(outboxId("cd", 0)) == -1 &&
+        box.triesFor(outboxId("cd", extra)) != -1 &&
+        App.Storage.getValue("ob_" + outboxId("cd", 0)) == null;
+
+    logger.debug("trimmed to " + box.pending().toString() + " dropped=" + box.droppedCount().toString());
+    return ok;
+}
+
+// Application.Storage throws when the object store is full. A throw escaping a
+// set being logged costs the workout, so every write here is guarded: the queue
+// keeps working in memory and the flag tells the UI it will not survive a
+// restart. The seam stands in for a full store, which a unit test cannot fill.
+(:test)
+function testOutboxSurvivesFullStorage(logger) as Lang.Boolean {
+    busClear();
+
+    var box = new Outbox();
+    box.simulateFull = true;
+    box.add("ce000001", outboxBody("set", 1));
+    box.add("ce000002", outboxBody("set", 2));
+
+    var ok = box.pending() == 2 &&
+        box.storageFailed() &&
+        App.Storage.getValue("ob_ce000001") == null &&
+        App.Storage.getValue("ob_ids") == null;
+
+    // An ack still empties the queue, and a store that recovers takes writes
+    // again without the flag clearing by itself.
+    box.acked("ce000001");
+    box.simulateFull = false;
+    box.add("ce000003", outboxBody("set", 3));
+
+    ok = ok &&
+        box.pending() == 2 &&
+        box.storageFailed() &&
+        App.Storage.getValue("ob_ce000003") != null;
+
+    logger.debug("full storage pending=" + box.pending().toString() + " failed=" + box.storageFailed().toString());
+    return ok;
+}
+
+// The purge the whole queue exists for: once the phone acks, nothing is left on
+// the watch. Checked on a multi-chunk message acked while it was still going out,
+// which is the case where a half-written entry could survive.
+(:test)
+function testOutboxAckLeavesNoKeys(logger) as Lang.Boolean {
+    busClear();
+
+    var log = "";
+    for (var i = 0; i < 30; i++) {
+        if (i > 0) {
+            log = log + ",";
+        }
+        log = log + "[\"bench_press\"," + (60 + i).toString() + ",8,2]";
+    }
+    var body = "{\"k\":\"end\",\"n\":9,\"t\":0,\"p\":{\"log\":[" + log + "]}}";
+    var id = "cf000001";
+
+    var box = new Outbox();
+    box.add(id, body);
+
+    var chunks = Bus.chunk(body);
+    if (chunks.size() < 2) {
+        logger.debug("body did not chunk: size=" + chunks.size().toString());
+        return false;
+    }
+
+    // Test mode drains the queue in one pump, so the mid-flight state is staged:
+    // all but the last chunk out, the ack arriving now.
+    box.active = box.order[0];
+    box.order[0]["chunks"] = chunks;
+    box.order[0]["ci"] = chunks.size() - 1;
+
+    var persistedBefore = App.Storage.getValue("ob_" + id) != null;
+    box.acked(id);
+
+    var restarted = new Outbox();
+    restarted.load();
+
+    var ok = persistedBefore &&
+        chunks.size() > 1 &&
+        box.pending() == 0 &&
+        box.active == null &&
+        App.Storage.getValue("ob_" + id) == null &&
+        App.Storage.getValue("ob_ids") == null &&
+        restarted.pending() == 0;
+
+    logger.debug("chunks=" + chunks.size().toString() + " pending after ack=" + box.pending().toString());
     return ok;
 }
 
