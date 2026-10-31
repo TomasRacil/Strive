@@ -76,6 +76,9 @@ class StriveView extends Ui.View {
     function startSession() {
         Session.start();
         Session.setIndex(index);
+        // Tells the phone a workout began. Queued, not sent: it waits its turn
+        // behind anything already in the outbox and is retried until acked.
+        StriveApp.syncStart();
         Ui.requestUpdate();
     }
 
@@ -90,6 +93,7 @@ class StriveView extends Ui.View {
         var exercise = currentExercise();
         Session.addSet(exercise[:id], weight, reps);
         Progress.record(exercise[:id], weight, setsLogged() >= TARGET_SETS);
+        StriveApp.syncSet();
         startRest(exercise[:rest]);
     }
 
@@ -211,6 +215,7 @@ class StriveView extends Ui.View {
         if (restRemaining > 0) {
             scheduleRestTick();
         }
+        StriveApp.drain();
         reloadFromPlan();
     }
 
