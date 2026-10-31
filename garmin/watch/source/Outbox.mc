@@ -156,6 +156,21 @@ class Outbox {
         return false;
     }
 
+    // The phone refused the message outright, so resending the same bytes would
+    // only be refused again. Marked failed and dropped from Storage at once.
+    function failed(id) as Void {
+        for (var i = 0; i < order.size(); i++) {
+            if (Text.same(order[i]["id"], id)) {
+                order[i]["failed"] = true;
+                forget(order[i]);
+                if (active != null && Text.same(active["id"], id)) {
+                    active = null;
+                }
+            }
+        }
+        saveOrder();
+    }
+
     // Reads the queue back after a restart. A message that was already marked
     // failed is dropped here rather than kept: a poisoned message must not be
     // able to wedge the queue for ever.

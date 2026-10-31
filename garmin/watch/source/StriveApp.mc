@@ -27,6 +27,10 @@ class StriveApp extends App.AppBase {
         outbox.acked(id);
     }
 
+    static function rejected(id) as Void {
+        outbox.failed(id);
+    }
+
     static function onSent() as Void {
         outbox.onSent();
     }

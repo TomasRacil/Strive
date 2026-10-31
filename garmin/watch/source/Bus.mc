@@ -128,6 +128,31 @@ module Bus {
             return null;
         }
 
+        // Acks and rejections are bare frames, not JSON documents. They are the
+        // only thing that takes a message out of the outbox, so they are handled
+        // before anything else and are never themselves acked.
+        if (raw.length() >= 2) {
+            var head = raw.substring(0, 2);
+            if (Text.same(head, "A|")) {
+                var ackId = raw.substring(2, raw.length());
+                var bar = Text.indexOf(ackId, "|", 0);
+                if (bar != null) {
+                    ackId = ackId.substring(0, bar);
+                }
+                StriveApp.acked(ackId);
+                note("A " + shortId(ackId));
+                return "ack";
+            }
+            if (Text.same(head, "N|")) {
+                var body = raw.substring(2, raw.length());
+                var bar = Text.indexOf(body, "|", 0);
+                var rejected = bar == null ? body : body.substring(0, bar);
+                StriveApp.rejected(rejected);
+                note("N rx");
+                return "reject";
+            }
+        }
+
         var parts = splitEnvelope(raw);
         if (parts == null) {
             note("rx?");

@@ -418,6 +418,42 @@ function testBusHelloAndPlan(logger) as Lang.Boolean {
     return ok;
 }
 
+// ---- ack frames ----------------------------------------------------------
+
+// The ack is the only thing that takes a message out of the outbox. If the
+// watch does not understand "A|id|n" it retries for ever and the queue never
+// drains, which is exactly the failure the queue exists to prevent.
+(:test)
+function testBusAckFrameClearsTheOutbox(logger) as Lang.Boolean {
+    busClear();
+
+    var id = "ffff0001";
+    StriveApp.outbox.add(id, "{\"k\":\"set\",\"n\":1,\"t\":0,\"p\":{}}");
+
+    if (StriveApp.outbox.pending() != 1) {
+        logger.debug("nothing queued");
+        return false;
+    }
+
+    var applied = Bus.receive("A|" + id + "|1");
+    logger.debug("after ack pending=" + StriveApp.outbox.pending().toString());
+    return Text.same(applied, "ack") && StriveApp.outbox.pending() == 0;
+}
+
+(:test)
+function testBusRejectFrameFailsTheMessage(logger) as Lang.Boolean {
+    busClear();
+
+    var id = "ffff0002";
+    StriveApp.outbox.add(id, "{\"k\":\"set\",\"n\":1,\"t\":0,\"p\":{}}");
+
+    var applied = Bus.receive("N|" + id + "|json");
+    logger.debug("after reject failed=" + StriveApp.outbox.isFailed(id).toString());
+    return Text.same(applied, "reject") &&
+        StriveApp.outbox.isFailed(id) &&
+        StriveApp.outbox.pending() == 0;
+}
+
 // ---- diagnostics ---------------------------------------------------------
 
 (:test)
