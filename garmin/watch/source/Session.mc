@@ -10,11 +10,16 @@ using Toybox.Time as Time;
 //
 // Storage reliably holds primitives only, so the log is a delimited string:
 //
-//     "bench_press|1000|8;squats|1200|6;"
+//     "bench_press|1000|8|1;squats|1200|6|3;"
 //
 // The weight is kept in tenths of a kilogram as an integer. Float formatting
 // follows the device locale, so a Czech watch would write "100,5" and the value
 // would not parse back on the phone.
+//
+// The fourth field is the RIR the user confirmed on the set sheet. A set with no
+// RIR - every set the build before the sheet wrote, and any set the user left
+// alone - is three fields, so there is exactly one encoding of "unknown" and no
+// reader has to guess whether a missing number meant 2.
 module Session {
 
     const ENTRY_SEPARATOR = ";";
@@ -93,13 +98,25 @@ module Session {
         return text;
     }
 
+    // A set logged without an RIR. Kept because the training screen has no RIR
+    // input yet and writes the three-field line the old build wrote.
     function addSet(id, weight, reps) as Void {
+        append(id, weight, reps, null);
+    }
+
+    // The sheet's shape: the RIR the user confirmed along with the set.
+    function addSetWithRir(id, weight, reps, rir) as Void {
+        append(id, weight, reps, rir);
+    }
+
+    function append(id, weight, reps, rir) as Void {
         // +0.5 before truncating: 2.5 * 10.0 is not exactly 25.0 in binary.
         var tenths = (weight * 10.0 + 0.5).toNumber();
-        App.Storage.setValue(
-            logKey(),
-            logText() + id + FIELD_SEPARATOR + tenths.toString() + FIELD_SEPARATOR + reps.toString() + ENTRY_SEPARATOR
-        );
+        var line = id + FIELD_SEPARATOR + tenths.toString() + FIELD_SEPARATOR + reps.toString();
+        if (rir != null) {
+            line = line + FIELD_SEPARATOR + rir.toString();
+        }
+        App.Storage.setValue(logKey(), logText() + line + ENTRY_SEPARATOR);
     }
 
     // Toybox.StringUtil has no split(), so this walks the string with find().
@@ -113,7 +130,10 @@ module Session {
 
         for (var i = 0; i < chunks.size(); i++) {
             var parts = Text.split(chunks[i], FIELD_SEPARATOR);
-            if (parts.size() != 3) {
+            // Three fields is what the build before RIR wrote and still what a
+            // set with no RIR writes; four is the sheet's shape. Anything else
+            // is a torn line and is skipped, as before.
+            if (parts.size() != 3 && parts.size() != 4) {
                 continue;
             }
 
@@ -126,10 +146,19 @@ module Session {
                 continue;
             }
 
+            // An old entry has no RIR, and an unreadable one is no better: null
+            // means unknown. Dropping the set instead would lose work to a bad
+            // digit, which is the one thing the log exists to prevent.
+            var rir = null;
+            if (parts.size() == 4) {
+                rir = parts[3].toNumber();
+            }
+
             out.add({
                 :id => parts[0],
                 :weight => tenths / 10.0,
-                :reps => reps
+                :reps => reps,
+                :rir => rir
             });
         }
 
