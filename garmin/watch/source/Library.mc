@@ -251,7 +251,8 @@ module Library {
                     "hi" => entry[:reps],
                     "rest" => entry[:rest],
                     "inc" => DEFAULT_INC,
-                    "minW" => 0.0
+                    "minW" => 0.0,
+                    "mus" => null
                 });
             }
             return out;
@@ -279,7 +280,8 @@ module Library {
                 "hi" => hi,
                 "rest" => numberOr(item["rest"], DEFAULT_REST),
                 "inc" => numberOr(item["inc"], DEFAULT_INC),
-                "minW" => numberOr(item["minW"], 0.0)
+                "minW" => numberOr(item["minW"], 0.0),
+                "mus" => item["mus"]
             });
         }
         return out;
@@ -397,6 +399,105 @@ module Library {
             return null;
         }
         return historyWeight(ex[id]);
+    }
+
+    // The history as Engine's timed-set shape, so the watch can rank and advise
+    // offline. The phone sends age in days because the two clocks are not
+    // synchronised (docs/watch-protocol.md), so the timestamp is reconstructed
+    // from the watch's own clock and the age the phone measured.
+    //
+    // A set whose fields do not parse is skipped, never guessed at: one bad row
+    // must not move a recommendation.
+    function historySets(now) as Lang.Array {
+        var out = [] as Lang.Array;
+        var stored = App.Storage.getValue(HIST_KEY);
+        if (stored == null) {
+            return out;
+        }
+
+        var parsed = Json.parse(stored);
+        if (parsed == null || !(parsed instanceof Lang.Dictionary)) {
+            return out;
+        }
+
+        var ex = parsed["ex"];
+        if (ex == null || !(ex instanceof Lang.Dictionary)) {
+            return out;
+        }
+
+        var ids = ex.keys();
+        for (var i = 0; i < ids.size(); i++) {
+            var id = ids[i].toString();
+            var sets = ex[ids[i]];
+            if (sets == null || !(sets instanceof Lang.Array)) {
+                continue;
+            }
+
+            for (var k = 0; k < sets.size(); k++) {
+                var set = sets[k];
+                if (set == null || !(set instanceof Lang.Array) || set.size() < 4) {
+                    continue;
+                }
+
+                var weight = numberOr(set[0], null);
+                var reps = wholeOr(set[1], null);
+                var age = numberOr(set[3], null);
+                if (weight == null || reps == null || age == null) {
+                    continue;
+                }
+
+                // -1 is the phone's "no RIR recorded", the same convention the
+                // watch writes on the way out.
+                var rir = wholeOr(set[2], -1);
+                out.add({
+                    :id => id,
+                    :weight => weight,
+                    :reps => reps,
+                    :rir => rir < 0 ? null : rir,
+                    :ts => (now - age * 86400.0).toNumber()
+                });
+            }
+        }
+        return out;
+    }
+
+    // The loads the phone recommended, id -> kg, parsed once so the picker does
+    // not re-parse the JSON for every row it draws.
+    function recWeights() as Lang.Dictionary {
+        var out = {};
+        var stored = App.Storage.getValue(REC_KEY);
+        if (stored == null) {
+            return out;
+        }
+
+        var parsed = Json.parse(stored);
+        if (parsed == null || !(parsed instanceof Lang.Dictionary)) {
+            return out;
+        }
+
+        var items = parsed["items"];
+        if (items == null || !(items instanceof Lang.Array)) {
+            return out;
+        }
+
+        for (var i = 0; i < items.size(); i++) {
+            var item = items[i];
+            if (item == null || !(item instanceof Lang.Dictionary)) {
+                continue;
+            }
+            var ex = item["ex"];
+            var weight = numberOr(item["w"], null);
+            if (ex == null || weight == null) {
+                continue;
+            }
+            out[ex.toString()] = weight;
+        }
+        return out;
+    }
+
+    function wholeOr(value, fallback) {
+        var asFloat = numberOr(value, null);
+        return asFloat == null ? fallback : asFloat.toNumber();
     }
 
     // [[w, reps, rir, ageDays], ...] - the newest set is the one with the
