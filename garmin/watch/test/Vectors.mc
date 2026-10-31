@@ -7,7 +7,7 @@ module Vectors {
 
     const TOLERANCE = 0.001;
 
-    // 7 cases
+    // 12 cases
     function e1rm() {
         return [
             { :name => "fresh 100 kg for 8 at 2 in reserve", :weight => 100.0, :reps => 8, :rir => 2, :expect => 133.333333 },
@@ -17,10 +17,15 @@ module Vectors {
             { :name => "bodyweight set with no external load", :weight => 0.0, :reps => 12, :rir => 1, :expect => 0.0 },
             { :name => "bodyweight set priced at 65 percent of 80 kg", :weight => 0.0, :reps => 12, :rir => 1, :bodyKg => 80.0, :bodyweightFraction => 0.65, :expect => 74.533333 },
             { :name => "a pull-up is the whole body for fifteen reps", :weight => 0.0, :reps => 15, :rir => 0, :bodyKg => 80.0, :bodyweightFraction => 1.0, :expect => 120.0 },
+            { :name => "a plate on a pull-up adds to body mass", :weight => 2.5, :reps => 8, :rir => 2, :bodyKg => 82.0, :bodyweightFraction => 1.0, :expect => 112.666667 },
+            { :name => "eight pull-ups without a plate: the number the plated set has to beat", :weight => 0.0, :reps => 8, :rir => 2, :bodyKg => 82.0, :bodyweightFraction => 1.0, :expect => 109.333333 },
+            { :name => "a weighted push-up is sixty-five percent of body mass plus the plate", :weight => 10.0, :reps => 5, :rir => 0, :bodyKg => 80.0, :bodyweightFraction => 0.65, :expect => 72.333333 },
+            { :name => "body mass alone is unchanged by additive load", :weight => 0.0, :reps => 12, :rir => 1, :bodyKg => 90.0, :bodyweightFraction => 1.0, :expect => 129.0 },
+            { :name => "a loaded lift ignores body mass even when the profile has one", :weight => 100.0, :reps => 8, :rir => 2, :bodyKg => 95.0, :bodyweightFraction => 0.0, :expect => 133.333333 },
         ];
     }
 
-    // 15 cases
+    // 17 cases
     function nextLoad() {
         return [
             { :name => "no history uses the seed", :spec => { :id => "bench_press", :lo => 6, :hi => 10, :inc => 2.5, :minW => 20.0, :rest => 150, :pattern => "pushup", :bw => 0.0, :primary => { "pectoralis_major" => 1.0, "anterior_deltoid" => 0.55, "triceps_lateral" => 0.5 }, :secondary => { "pectoralis_minor" => 0.4, "serratus_anterior" => 0.3, "triceps_medial" => 0.3, "rotator_cuff" => 0.2 } }, :history => [], :seedKg => 60.0, :expectWeight => 60.0, :expectReps => 10 },
@@ -37,7 +42,9 @@ module Vectors {
             { :name => "lower body takes a five kilo step", :spec => { :id => "squats", :lo => 4, :hi => 8, :inc => 5.0, :minW => 20.0, :rest => 180, :pattern => "squat", :bw => 0.0, :primary => { "vastus_lateralis" => 0.9, "gluteus_maximus" => 0.9, "rectus_femoris" => 0.8, "vastus_medialis" => 0.8 }, :secondary => { "erector_spinae" => 0.5, "adductors" => 0.4, "biceps_femoris" => 0.4, "semitendinosus" => 0.3, "transverse_abdominis" => 0.3, "gluteus_medius" => 0.3 } }, :history => [{ :weight => 140.0, :reps => 8, :rir => 2 }], :seedKg => 100.0, :expectWeight => 145.0, :expectReps => 4 },
             { :name => "an unrecorded RIR counts as two in reserve", :spec => { :id => "bench_press", :lo => 6, :hi => 10, :inc => 2.5, :minW => 20.0, :rest => 150, :pattern => "pushup", :bw => 0.0, :primary => { "pectoralis_major" => 1.0, "anterior_deltoid" => 0.55, "triceps_lateral" => 0.5 }, :secondary => { "pectoralis_minor" => 0.4, "serratus_anterior" => 0.3, "triceps_medial" => 0.3, "rotator_cuff" => 0.2 } }, :history => [{ :weight => 100.0, :reps => 10, :rir => null }], :seedKg => 60.0, :expectWeight => 102.5, :expectReps => 6 },
             { :name => "fifteen pull-ups at three in reserve beat fifteen at failure", :spec => { :id => "pull_ups", :lo => 6, :hi => 10, :inc => 2.5, :minW => 0.0, :rest => 120, :pattern => "pullup", :bw => 1.0, :primary => { "latissimus_dorsi" => 1.0, "biceps_brachii" => 0.6, "teres_major" => 0.6 }, :secondary => { "rhomboids" => 0.4, "trapezius_mid" => 0.4, "brachialis" => 0.4, "forearm_flexors" => 0.4, "rectus_abdominis" => 0.2 } }, :history => [{ :weight => 0.0, :reps => 15, :rir => 0 }, { :weight => 0.0, :reps => 15, :rir => 3 }], :seedKg => 0.0, :bodyKg => 80.0, :expectWeight => 2.5, :expectReps => 6 },
-            { :name => "a bodyweight set is the top set over a lightly loaded one", :spec => { :id => "pull_ups", :lo => 6, :hi => 10, :inc => 2.5, :minW => 0.0, :rest => 120, :pattern => "pullup", :bw => 1.0, :primary => { "latissimus_dorsi" => 1.0, "biceps_brachii" => 0.6, "teres_major" => 0.6 }, :secondary => { "rhomboids" => 0.4, "trapezius_mid" => 0.4, "brachialis" => 0.4, "forearm_flexors" => 0.4, "rectus_abdominis" => 0.2 } }, :history => [{ :weight => 0.0, :reps => 15, :rir => 2 }, { :weight => 2.5, :reps => 8, :rir => 2 }], :seedKg => 0.0, :bodyKg => 82.0, :expectWeight => 2.5, :expectReps => 6 },
+            { :name => "the same eight reps with a plate is the top set", :spec => { :id => "pull_ups", :lo => 6, :hi => 10, :inc => 2.5, :minW => 0.0, :rest => 120, :pattern => "pullup", :bw => 1.0, :primary => { "latissimus_dorsi" => 1.0, "biceps_brachii" => 0.6, "teres_major" => 0.6 }, :secondary => { "rhomboids" => 0.4, "trapezius_mid" => 0.4, "brachialis" => 0.4, "forearm_flexors" => 0.4, "rectus_abdominis" => 0.2 } }, :history => [{ :weight => 0.0, :reps => 8, :rir => 2 }, { :weight => 2.5, :reps => 8, :rir => 2 }], :seedKg => 0.0, :bodyKg => 82.0, :expectWeight => 2.5, :expectReps => 10 },
+            { :name => "a warm-up without a plate does not beat a working set with one", :spec => { :id => "pull_ups", :lo => 6, :hi => 10, :inc => 2.5, :minW => 0.0, :rest => 120, :pattern => "pullup", :bw => 1.0, :primary => { "latissimus_dorsi" => 1.0, "biceps_brachii" => 0.6, "teres_major" => 0.6 }, :secondary => { "rhomboids" => 0.4, "trapezius_mid" => 0.4, "brachialis" => 0.4, "forearm_flexors" => 0.4, "rectus_abdominis" => 0.2 } }, :history => [{ :weight => 0.0, :reps => 8, :rir => 4 }, { :weight => 10.0, :reps => 8, :rir => 2 }], :seedKg => 0.0, :bodyKg => 82.0, :expectWeight => 10.0, :expectReps => 10 },
+            { :name => "a plated set at the top of the range earns the increment", :spec => { :id => "pull_ups", :lo => 6, :hi => 10, :inc => 2.5, :minW => 0.0, :rest => 120, :pattern => "pullup", :bw => 1.0, :primary => { "latissimus_dorsi" => 1.0, "biceps_brachii" => 0.6, "teres_major" => 0.6 }, :secondary => { "rhomboids" => 0.4, "trapezius_mid" => 0.4, "brachialis" => 0.4, "forearm_flexors" => 0.4, "rectus_abdominis" => 0.2 } }, :history => [{ :weight => 2.5, :reps => 10, :rir => 2 }], :seedKg => 0.0, :bodyKg => 82.0, :expectWeight => 5.0, :expectReps => 6 },
         ];
     }
 
