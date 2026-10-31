@@ -77,9 +77,20 @@ Verified building against Connect IQ 9.3.0 for `fenix847mm`.
 ## Sideload
 
 The watch presents as an **MTP device**, not a USB drive, so there is no drive
-letter. Copy the `.prg` into `Internal Storage\GARMIN\Apps` through Explorer (or
-the COM helper used during development). Then unplug and restart the watch once:
-Connect IQ apps are indexed at boot.
+letter and `Copy-Item` cannot see it. `deploy.ps1` copies the build through the
+Windows Shell COM interface, which walks "This PC" the way Explorer does:
+
+```powershell
+.\deploy.ps1
+```
+
+It finds the Garmin device, copies `build\Strive-fenix847mm.prg` into
+`Internal Storage\GARMIN\APPS`, and confirms the file landed. Unplug and restart
+the watch once: Connect IQ apps are indexed at boot.
+
+MTP writes fail silently when the watch is asleep, so unlock it first. If the
+script reports no device, the watch is in charge-only mode or the cable is not a
+data cable.
 
 Or in one step, if the watch is mounted as a drive at `E:`:
 
