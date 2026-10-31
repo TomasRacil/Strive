@@ -169,6 +169,19 @@ message so the phone can show where the starting numbers came from.
 Re-running calibration is available from the action menu on Home ("Recalibrate")
 for the case where the first attempt was a bad day.
 
+## Haptics
+
+Every state change that matters is also a buzz, because the screen is often
+covered by a sleeve or a bar. Four patterns, distinguishable by feel alone:
+
+    set banked        one short pulse          60 ms
+    READY (HR back)   two short pulses         60 / 100 / 60 ms
+    rest over         three short pulses       60 / 100 / 60 / 100 / 60 ms
+    sync failure      one long pulse           400 ms
+
+The failure pattern is deliberately unlike the others: it is the only one that
+means "something needs you", and it must not be mistaken for a completed rest.
+
 ## Heart rate
 
 `Sensor.getInfo().heartRate` is read once per second while a set is in progress
