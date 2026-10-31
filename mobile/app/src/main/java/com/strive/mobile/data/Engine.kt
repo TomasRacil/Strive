@@ -179,6 +179,18 @@ object Engine {
     /** No seed available: an empty bar is the only honest guess. */
     const val FALLBACK_SEED_KG = 20.0
 
+    /**
+     * Body mass assumed when the profile has none yet, i.e. before onboarding
+     * has asked for it.
+     *
+     * Progression needs a body mass even then: a bodyweight set is priced at
+     * `bodyKg * bodyweightFraction`, and without it every set of a pull-up
+     * scores e1rm 0 and the tie-break decides which one was "top". One
+     * documented number is better than 80.0 sprinkled through the call sites -
+     * the caller passes the real profile weight as soon as it has one.
+     */
+    const val DEFAULT_BODY_KG = 80.0
+
     private const val DAY_SECONDS = 86_400.0
     private const val DAYS_IN_WINDOW_28 = 28
 
@@ -223,12 +235,22 @@ object Engine {
      * Empty history is not an error: the caller's seed is used, aimed at the top
      * of the range because a seed is deliberately conservative.
      *
+     * [bodyKg] exists because a bodyweight set has weight 0, and its e1rm is only
+     * meaningful when body mass is priced in: pull-ups 15 reps at 3 in reserve is
+     * a better set than 15 at failure, and the difference is invisible without a
+     * body mass. Callers pass the profile's weight; [DEFAULT_BODY_KG] covers the
+     * window before onboarding has asked for it.
+     *
      * "top" is the set with the highest e1rm. Ties are broken towards more reps
-     * and then less RIR, which only matters for bodyweight work where every set
-     * has weight 0 and e1rm is therefore 0 for all of them - without a tie-break
-     * the "top" set would be whichever was logged first.
+     * and then more reps in reserve - a tie is two sets of the same lift, and the
+     * one that left more in the tank is the one worth progressing from.
      */
-    fun nextLoad(spec: EngineSpec, history: List<EngineSet>, seedKg: Double): LoadAdvice {
+    fun nextLoad(
+        spec: EngineSpec,
+        history: List<EngineSet>,
+        seedKg: Double,
+        bodyKg: Double = DEFAULT_BODY_KG
+    ): LoadAdvice {
         if (history.isEmpty()) {
             return LoadAdvice(
                 weightKg = clampToSpec(seedKg, spec),
@@ -236,7 +258,7 @@ object Engine {
             )
         }
 
-        val top = history.reduce { best, set -> if (betterSet(set, best)) set else best }
+        val top = history.reduce { best, set -> if (betterSet(set, best, spec, bodyKg)) set else best }
         val rir = top.rir ?: ASSUMED_RIR
         val base = top.weightKg
 
@@ -249,17 +271,25 @@ object Engine {
 
         return LoadAdvice(
             weightKg = clampToSpec(raw, spec),
-            // The point of a range is to earn the increment before taking it.
-            targetReps = if (raw > base) spec.lo else spec.hi
+            // The point of a range is to earn the increment before taking it, and
+            // a deload rebuilds the same way: from the bottom of the range, so
+            // the reps come back before the plates do.
+            targetReps = if (raw != base) spec.lo else spec.hi
         )
     }
 
-    private fun betterSet(candidate: EngineSet, best: EngineSet): Boolean {
-        val candidateE1rm = e1rm(candidate.weightKg, candidate.reps, candidate.rir ?: ASSUMED_RIR)
-        val bestE1rm = e1rm(best.weightKg, best.reps, best.rir ?: ASSUMED_RIR)
+    private fun betterSet(candidate: EngineSet, best: EngineSet, spec: EngineSpec, bodyKg: Double): Boolean {
+        val candidateE1rm = e1rm(
+            candidate.weightKg, candidate.reps, candidate.rir ?: ASSUMED_RIR,
+            bodyKg, spec.bodyweightFraction
+        )
+        val bestE1rm = e1rm(
+            best.weightKg, best.reps, best.rir ?: ASSUMED_RIR,
+            bodyKg, spec.bodyweightFraction
+        )
         if (candidateE1rm != bestE1rm) return candidateE1rm > bestE1rm
         if (candidate.reps != best.reps) return candidate.reps > best.reps
-        return (candidate.rir ?: ASSUMED_RIR) < (best.rir ?: ASSUMED_RIR)
+        return (candidate.rir ?: ASSUMED_RIR) > (best.rir ?: ASSUMED_RIR)
     }
 
     // ---- 3. how many sets ------------------------------------------------
@@ -342,7 +372,11 @@ object Engine {
             if (gate < RECOVERY_EXCLUSION) return@mapNotNull null
 
             val mine = sets.filter { it.exerciseId == spec.id }
-            val daysSince = mine.maxOfOrNull { ageDays(it.timestampEpochSeconds, nowEpochSeconds) }
+            // The newest set, not the oldest: "days since last trained" is how
+            // long the muscle has had to recover. Taking the oldest would let a
+            // lift trained this morning read as stale, so the more often a lift
+            // came up, the more of the staleness bonus it would earn.
+            val daysSince = mine.minOfOrNull { ageDays(it.timestampEpochSeconds, nowEpochSeconds) }
                 ?.coerceIn(0.0, 7.0) ?: 7.0
             val timesTrained = distinctTrainingDays(mine, nowEpochSeconds).coerceAtMost(8)
 

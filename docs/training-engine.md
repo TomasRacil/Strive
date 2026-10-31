@@ -24,25 +24,38 @@ that the estimate explodes and the input is more likely wrong than extreme. For 
 bodyweight movement (`weight = 0`) the same formula runs on body mass times the
 movement's bodyweight fraction (push-up 0.65, squat 0.85, pull-up 1.0).
 
+Body mass comes from the profile. Before onboarding has asked for it, the engine
+uses `DEFAULT_BODY_KG = 80`, one constant in each implementation: without a body
+mass every pull-up set scores e1rm 0 and progression for bodyweight work becomes a
+coin toss. Callers pass the real weight as soon as they have it.
+
 ## 2. Next load for one exercise
 
 Input: the sets logged for this exercise in the most recent session that
-contains it, oldest first. Each set is `{weight, reps, rir}`.
+contains it, oldest first. Each set is `{weight, reps, rir}`, and the caller also
+passes the user's body mass for the e1rm above.
 
     top = the set with the highest e1rm in that session
+          (ties: more reps first, then more reps in reserve)
 
     if top.reps >= hi and top.rir >= 2   -> weight + inc
     if top.reps >= hi and top.rir == 1   -> weight          (one more time at this load)
     if top.rir <= 0 and top.reps < lo    -> weight - inc
     otherwise                            -> weight
 
+The e1rm is the bodyweight-aware one, so 15 pull-ups at 3 in reserve is a better
+set than 15 at failure: same reps, more left in the tank, and the first one earns
+the increment.
+
 Then round to the nearest multiple of `inc` and clamp to at least `minW` (empty
 bar 20 kg for barbell movements, 2.5 kg for accessory work). `inc` defaults to
 2.5 kg for upper body and 5 kg for lower body compounds; it is a property of the
 exercise, pushed in the library.
 
-Target reps for the next session: `lo` if the load went up, otherwise `hi` — the
-point of a rep range is to earn the increment before taking it.
+Target reps for the next session: `lo` whenever the load changes, `hi` only when
+it is held. The point of a rep range is to earn the increment before taking it,
+and a deload rebuilds the same way — from the bottom of the range, so the reps
+come back before the plates do.
 
 No history at all is not an error: fall back to the seed in section 5.
 
@@ -82,6 +95,11 @@ Exercise priority:
     exclude an exercise whose primary muscle has recovery < 0.25
 
     order by score descending, tie-break on library order
+
+`daysSinceLastTrained` is the age of the newest set of that exercise, not the
+oldest: the term is asking how long the muscle has had to recover. Taking the
+oldest would read a lift trained this morning as stale, and the more often it came
+up the more of the 0.15 it would collect. Never trained means 7.
 
 The first term is the user's rule — least-loaded muscles first. The second keeps
 a lift that has not come up in a week from being buried. The third is the

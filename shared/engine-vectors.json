@@ -46,6 +46,15 @@
       "bodyweightFraction": 0.65,
       "expect": 74.533333,
       "name": "bodyweight set priced at 65 percent of 80 kg"
+    },
+    {
+      "weight": 0.0,
+      "reps": 15,
+      "rir": 0,
+      "bodyKg": 80.0,
+      "bodyweightFraction": 1.0,
+      "expect": 120.0,
+      "name": "a pull-up is the whole body for fifteen reps"
     }
   ],
   "nextLoad": [
@@ -176,7 +185,7 @@
       ],
       "seedKg": 60.0,
       "expectWeight": 97.5,
-      "expectReps": 10,
+      "expectReps": 6,
       "name": "failure below the range deloads"
     },
     {
@@ -312,7 +321,7 @@
       ],
       "seedKg": 60.0,
       "expectWeight": 20.0,
-      "expectReps": 10,
+      "expectReps": 6,
       "name": "a deload cannot go under the empty bar"
     },
     {
@@ -376,7 +385,7 @@
       ],
       "seedKg": 0.0,
       "expectWeight": 0.0,
-      "expectReps": 20,
+      "expectReps": 12,
       "name": "bodyweight failure stays at bodyweight"
     },
     {
@@ -488,6 +497,88 @@
       "expectWeight": 102.5,
       "expectReps": 6,
       "name": "an unrecorded RIR counts as two in reserve"
+    },
+    {
+      "spec": {
+        "id": "pull_ups",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 0.0,
+        "rest": 120,
+        "pattern": "pullup",
+        "bw": 1.0,
+        "primary": {
+          "latissimus_dorsi": 1.0,
+          "biceps_brachii": 0.6,
+          "teres_major": 0.6
+        },
+        "secondary": {
+          "rhomboids": 0.4,
+          "trapezius_mid": 0.4,
+          "brachialis": 0.4,
+          "forearm_flexors": 0.4,
+          "rectus_abdominis": 0.2
+        }
+      },
+      "history": [
+        {
+          "weight": 0.0,
+          "reps": 15,
+          "rir": 0
+        },
+        {
+          "weight": 0.0,
+          "reps": 15,
+          "rir": 3
+        }
+      ],
+      "seedKg": 0.0,
+      "bodyKg": 80.0,
+      "expectWeight": 2.5,
+      "expectReps": 6,
+      "name": "fifteen pull-ups at three in reserve beat fifteen at failure"
+    },
+    {
+      "spec": {
+        "id": "pull_ups",
+        "lo": 6,
+        "hi": 10,
+        "inc": 2.5,
+        "minW": 0.0,
+        "rest": 120,
+        "pattern": "pullup",
+        "bw": 1.0,
+        "primary": {
+          "latissimus_dorsi": 1.0,
+          "biceps_brachii": 0.6,
+          "teres_major": 0.6
+        },
+        "secondary": {
+          "rhomboids": 0.4,
+          "trapezius_mid": 0.4,
+          "brachialis": 0.4,
+          "forearm_flexors": 0.4,
+          "rectus_abdominis": 0.2
+        }
+      },
+      "history": [
+        {
+          "weight": 0.0,
+          "reps": 15,
+          "rir": 2
+        },
+        {
+          "weight": 2.5,
+          "reps": 8,
+          "rir": 2
+        }
+      ],
+      "seedKg": 0.0,
+      "bodyKg": 82.0,
+      "expectWeight": 2.5,
+      "expectReps": 6,
+      "name": "a bodyweight set is the top set over a lightly loaded one"
     }
   ],
   "recommendedSets": [
@@ -1415,14 +1506,175 @@
       ],
       "now": 1728000,
       "expectOrder": [
-        "bicep_curls",
-        "overhead_press"
+        "overhead_press",
+        "bicep_curls"
       ],
       "expectScores": {
-        "bicep_curls": 1.210116,
-        "overhead_press": 1.16182
+        "overhead_press": 1.16182,
+        "bicep_curls": 1.081545
       },
-      "name": "frequent lifting earns the frequency term"
+      "name": "eight training days earn the frequency term but not a staleness bonus"
+    },
+    {
+      "specs": [
+        {
+          "id": "bench_press",
+          "lo": 6,
+          "hi": 10,
+          "inc": 2.5,
+          "minW": 20.0,
+          "rest": 150,
+          "pattern": "pushup",
+          "bw": 0.0,
+          "primary": {
+            "pectoralis_major": 1.0,
+            "anterior_deltoid": 0.55,
+            "triceps_lateral": 0.5
+          },
+          "secondary": {
+            "pectoralis_minor": 0.4,
+            "serratus_anterior": 0.3,
+            "triceps_medial": 0.3,
+            "rotator_cuff": 0.2
+          }
+        },
+        {
+          "id": "bicep_curls",
+          "lo": 8,
+          "hi": 12,
+          "inc": 2.5,
+          "minW": 2.5,
+          "rest": 90,
+          "pattern": "",
+          "bw": 0.0,
+          "primary": {
+            "biceps_brachii": 1.0,
+            "brachialis": 0.6
+          },
+          "secondary": {
+            "brachioradialis": 0.5,
+            "forearm_flexors": 0.4,
+            "anterior_deltoid": 0.1
+          }
+        }
+      ],
+      "sets": [
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 4,
+          "ts": 1728000
+        },
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 4,
+          "ts": 1296000
+        },
+        {
+          "id": "bicep_curls",
+          "weight": 15.0,
+          "reps": 10,
+          "rir": 4,
+          "ts": 1296000
+        }
+      ],
+      "now": 1728000,
+      "expectOrder": [
+        "bicep_curls",
+        "bench_press"
+      ],
+      "expectScores": {
+        "bicep_curls": 1.103143,
+        "bench_press": 0.991881
+      },
+      "name": "a lift trained today is not stale because it was also trained five days ago"
+    },
+    {
+      "specs": [
+        {
+          "id": "bench_press",
+          "lo": 6,
+          "hi": 10,
+          "inc": 2.5,
+          "minW": 20.0,
+          "rest": 150,
+          "pattern": "pushup",
+          "bw": 0.0,
+          "primary": {
+            "pectoralis_major": 1.0,
+            "anterior_deltoid": 0.55,
+            "triceps_lateral": 0.5
+          },
+          "secondary": {
+            "pectoralis_minor": 0.4,
+            "serratus_anterior": 0.3,
+            "triceps_medial": 0.3,
+            "rotator_cuff": 0.2
+          }
+        },
+        {
+          "id": "bicep_curls",
+          "lo": 8,
+          "hi": 12,
+          "inc": 2.5,
+          "minW": 2.5,
+          "rest": 90,
+          "pattern": "",
+          "bw": 0.0,
+          "primary": {
+            "biceps_brachii": 1.0,
+            "brachialis": 0.6
+          },
+          "secondary": {
+            "brachioradialis": 0.5,
+            "forearm_flexors": 0.4,
+            "anterior_deltoid": 0.1
+          }
+        }
+      ],
+      "sets": [
+        {
+          "id": "bicep_curls",
+          "weight": 15.0,
+          "reps": 10,
+          "rir": 3,
+          "ts": 1728000
+        },
+        {
+          "id": "bicep_curls",
+          "weight": 15.0,
+          "reps": 10,
+          "rir": 3,
+          "ts": 1728000
+        },
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 3,
+          "ts": 1728000
+        },
+        {
+          "id": "bench_press",
+          "weight": 100.0,
+          "reps": 8,
+          "rir": 3,
+          "ts": 1382400
+        }
+      ],
+      "now": 1728000,
+      "expectOrder": [
+        "bench_press",
+        "bicep_curls"
+      ],
+      "expectScores": {
+        "bench_press": 0.979717,
+        "bicep_curls": 0.926976
+      },
+      "name": "a lift trained only today earns no staleness bonus"
     }
   ],
   "rest": [
