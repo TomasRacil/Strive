@@ -24,6 +24,11 @@ The APK lands in `app/build/outputs/apk/debug/app-debug.apk`:
 (`sdk.dir=C:/Users/you/AppData/Local/Android/Sdk`), because the backslash-escaped
 form fails the Android SDK path validator.
 
+`JAVA_HOME` has the same trap: give it the native form
+(`C:/Program Files/Eclipse Adoptium/jdk-21...`). An MSYS-style
+`/c/Program Files/...` works until the Gradle daemon is cold, and then `gradlew`
+fails with a confusing "no Java home" rather than a path error.
+
 ## Layout
 
     data/    models, seed library, double progression, JSON persistence
