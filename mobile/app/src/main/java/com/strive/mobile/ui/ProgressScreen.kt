@@ -60,7 +60,7 @@ fun ProgressView(state: AppState) {
     val exercise = state.exercises.firstOrNull { it.id == selectedId }
     val series = exercise?.let { Stats.bestPerSession(state.sessions, it.id) } ?: emptyList()
     val best = exercise?.let { Stats.bestEver(state.sessions, it.id) } ?: 0.0
-    val weekly = Stats.weeklyVolume(state.sessions, 8)
+    val weekly = Stats.weeklyVolume(state.sessions, 8, state.exercises, state.settings.bodyKg)
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(
@@ -124,7 +124,10 @@ fun ProgressView(state: AppState) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    Format.volume(Stats.totalVolume(state.sessions), unit),
+                    Format.volume(
+                        Stats.totalVolume(state.sessions, state.exercises, state.settings.bodyKg),
+                        unit
+                    ),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
                 )

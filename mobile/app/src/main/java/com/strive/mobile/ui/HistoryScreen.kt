@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.strive.mobile.data.Exercise
 import com.strive.mobile.data.Session
 import kotlin.math.round
 
@@ -101,6 +102,8 @@ fun HistoryScreen(state: AppState) {
                 // drawn so far, so a card does not change as the list scrolls.
                 progress = Stats.liftProgress(session, state.sessions),
                 lifts = Stats.topLifts(session, 3),
+                exercises = state.exercises,
+                bodyKg = state.settings.bodyKg,
                 lang = lang,
                 unit = unit,
                 onOpen = { openSession = session },
@@ -126,7 +129,7 @@ fun HistoryScreen(state: AppState) {
                     ) {
                         Text(
                             "${Strings.sets(lang, session.sets.size)} · " +
-                                "${Format.volume(session.volumeKg, unit)} · " +
+                                "${Format.volume(session.volumeKg(state.exercises, state.settings.bodyKg), unit)} · " +
                                 Format.duration(session.durationSeconds),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -166,6 +169,8 @@ private fun SessionCard(
     session: Session,
     progress: Stats.LiftProgress?,
     lifts: List<String>,
+    exercises: List<Exercise>,
+    bodyKg: Double,
     lang: String,
     unit: String,
     onOpen: () -> Unit,
@@ -182,7 +187,7 @@ private fun SessionCard(
                     Text(Format.date(session.startedAt, lang), fontWeight = FontWeight.Bold)
                     Text(
                         "${Strings.sets(lang, session.sets.size)} · " +
-                            "${Format.volume(session.volumeKg, unit)} · " +
+                            "${Format.volume(session.volumeKg(exercises, bodyKg), unit)} · " +
                             Format.duration(session.durationSeconds),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

@@ -89,7 +89,10 @@ fun StriveApp(state: AppState, watch: WatchRepository) {
                 text = {
                     Text(
                         "${Strings.sets(lang, finished.sets.size)} · " +
-                            Format.volume(finished.volumeKg, state.settings.unit)
+                            Format.volume(
+                                finished.volumeKg(state.exercises, state.settings.bodyKg),
+                                state.settings.unit
+                            )
                     )
                 },
                 confirmButton = {

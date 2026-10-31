@@ -34,7 +34,12 @@ object Stats {
             }
 
     /** Total volume for each of the last [weeks] weeks, oldest first. */
-    fun weeklyVolume(sessions: List<Session>, weeks: Int): List<Double> {
+    fun weeklyVolume(
+        sessions: List<Session>,
+        weeks: Int,
+        exercises: List<Exercise>,
+        bodyKg: Double
+    ): List<Double> {
         val thisWeek = LocalDate.now().with(DayOfWeek.MONDAY)
         val firstWeek = thisWeek.minusWeeks((weeks - 1).toLong())
 
@@ -49,7 +54,7 @@ object Stats {
                         .toLocalDate()
                     !day.isBefore(weekStart) && day.isBefore(weekEnd)
                 }
-                .sumOf { it.volumeKg }
+                .sumOf { it.volumeKg(exercises, bodyKg) }
         }
     }
 
@@ -59,7 +64,8 @@ object Stats {
             .filter { it.exerciseId == exerciseId }
             .maxOfOrNull { estimate1RM(it.weightKg, it.reps) } ?: 0.0
 
-    fun totalVolume(sessions: List<Session>): Double = sessions.sumOf { it.volumeKg }
+    fun totalVolume(sessions: List<Session>, exercises: List<Exercise>, bodyKg: Double): Double =
+        sessions.sumOf { it.volumeKg(exercises, bodyKg) }
 
     /**
      * The heaviest set of a group; reps break ties, so 100 kg x 5 beats 100 kg x 3.

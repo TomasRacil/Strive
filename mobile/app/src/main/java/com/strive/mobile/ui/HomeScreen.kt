@@ -143,7 +143,10 @@ fun HomeScreen(state: AppState, onStartTraining: () -> Unit) {
                         Text(Format.date(session.startedAt, lang), fontWeight = FontWeight.Bold)
                         Text(
                             "${Strings.sets(lang, session.sets.size)} · " +
-                                Format.volume(session.volumeKg, unit),
+                                Format.volume(
+                                    session.volumeKg(state.exercises, state.settings.bodyKg),
+                                    unit
+                                ),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
