@@ -29,6 +29,15 @@ data class Exercise(
     val description: String = "",
     val primary: Map<String, Double> = emptyMap(),
     val secondary: Map<String, Double> = emptyMap(),
+    /**
+     * Share of body mass the movement moves: 1.0 for a pull-up, 0.65 for a
+     * push-up, 0.0 for anything loaded with plates.
+     *
+     * Null means "the shipped table has the answer" ([EngineSpec.bodyweightFraction]).
+     * A user-added calisthenics movement carries its own fraction here, which is
+     * what lets the watch price its sets without a rebuild.
+     */
+    val bodyweightFraction: Double? = null,
     val variations: List<Variation> = emptyList()
 ) {
     /**
