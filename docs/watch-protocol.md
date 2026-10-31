@@ -112,6 +112,19 @@ outbox before `transmit` is called, and the outbox is drained on app start, on
 offline produces a `start`, its `set`s and an `end` in that order, delivered
 minutes or days later.
 
+The outbox holds at most 64 pending frames (`OutboxLimits.PENDING`). A session is
+one `start`, its `set`s and one `end`, so the cap clears the longest realistic
+workout with room for the next one to begin. When the queue is full the oldest
+frame is dropped and counted — with one exception: an `end` is never dropped to
+make room for a `set`, and when nothing but `end`s is left the incoming `set` is
+the frame that goes. A drop is named in `ble_dbg` and counted by
+`droppedCount()`.
+
+A full object store does not cost a set. Every write in the outbox is guarded, so
+a refused write leaves the frame in memory for the rest of the session and raises
+`storageFailed()`, which the UI reads to say the queue will not survive a
+restart.
+
 The phone does the same in reverse: `lib`, `plan` and `hist` are stored, so a
 reconnect re-sends them without the user asking.
 
