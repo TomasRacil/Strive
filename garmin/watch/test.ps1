@@ -88,12 +88,22 @@ try {
     }
 
     # The simulator takes a variable time to open its port, and on a loaded
-    # machine (gradle daemons, other agents) it is far longer than the old fixed
-    # 18 s. Retry until it answers instead of assuming a boot time.
+    # machine it can accept the connection and then never answer at all. Each
+    # attempt is therefore bounded: a monkeydo that hangs must not hang the
+    # script, or a wedged simulator looks like a test run that never ends.
     $raw = ""
-    for ($attempt = 1; $attempt -le 12; $attempt++) {
-        $raw = & $monkeydo "build\Strive-test.prg" $Device /t 2>&1 | Out-String
-        if ($raw -notmatch 'Unable to connect to simulator') {
+    for ($attempt = 1; $attempt -le 4; $attempt++) {
+        $outFile = Join-Path $PWD "build\test-run-$attempt.log"
+        $proc = Start-Process -FilePath $monkeydo `
+            -ArgumentList @("build\Strive-test.prg", $Device, "/t") `
+            -NoNewWindow -PassThru -RedirectStandardOutput $outFile -RedirectStandardError "$outFile.err"
+        $finished = $proc.WaitForExit(120000)
+        if (-not $finished) {
+            Write-Host "monkeydo did not answer in 120 s (attempt $attempt); stopping it." -ForegroundColor Yellow
+            try { $proc.Kill() } catch { }
+        }
+        $raw = (Get-Content $outFile -Raw -ErrorAction SilentlyContinue) + (Get-Content "$outFile.err" -Raw -ErrorAction SilentlyContinue)
+        if ($raw -and $raw -notmatch 'Unable to connect to simulator') {
             break
         }
         Write-Host "Simulator not ready (attempt $attempt), waiting..."
