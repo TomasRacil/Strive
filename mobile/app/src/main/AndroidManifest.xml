@@ -1,16 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- The Connect IQ companion SDK reaches the watch over Bluetooth. -->
+    <!-- The only transport is the Connect IQ companion SDK, which hands its
+         messages to Garmin Connect Mobile through a bound service. The app
+         itself never opens a socket or a radio, so no Bluetooth permission is
+         declared: a GATT server here would need CONNECT + ADVERTISE, and a scan
+         would need SCAN plus location on Android 11 and older. -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <!-- The phone is the BLE peripheral: opening a GATT server needs CONNECT,
-         and advertising needs ADVERTISE (Android 12+). -->
-    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
 
     <application
         android:allowBackup="true"

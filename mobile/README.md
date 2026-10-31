@@ -77,3 +77,6 @@ the watch paired as normal:
 So `CIQQA-4631` (the message bus "accepts and never delivers") does not apply on
 this firmware. Direct BLE was abandoned for this reason: it needs the watch's
 Garmin Connect link torn down first, i.e. unpairing the phone before every sync.
+The phone-side GATT server and its Settings probe card are gone with it, which is
+why the app now declares no Bluetooth permission: the companion SDK hands every
+message to Garmin Connect Mobile instead.
