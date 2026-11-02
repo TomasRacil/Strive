@@ -3,21 +3,59 @@
 Written at the point the session was stopped, so the next one starts from the
 state rather than from the story.
 
+## UPDATE: the crash is fixed and verified on the watch
+
+Root cause: every `Ui.pushView` passed the `TrainingLoop` where the delegate
+expects the view it drives —
+
+    new PickerDelegate(loop)     // a TrainingLoop has no move()
+    new ExerciseDelegate(loop)   // nor take()
+    new RestDelegate(loop)
+    new NextPromptDelegate(loop)
+    new ActionMenuDelegate(loop)
+
+Monkey C resolves the method at runtime, so it compiled and then died on the
+first keypress with a missing symbol — the Connect IQ icon, no message. Home was
+the only screen passing its own view (`new HomeDelegate(home)`), which is exactly
+why Home worked and everything after it killed the app. Fixed at all five sites
+in `b14ae9b`; the whole free-training loop now runs on a physical fenix 8.
+
+## UPDATE: why the simulator never ran
+
+It was not wedged. It was sitting behind a modal dialog:
+
+    There is no data connection. Please connect an Android device to ADB. Run
+    "adb forward tcp:7381 tcp:7381" ... and start the connection via the
+    Connection menu
+
+`monkeydo` connects and then waits forever, and prints nothing, which looks
+identical to a dead simulator. The dialog is raised by the app registering for
+phone messages / transmitting while the simulator has no phone attached, and it
+comes back on every retry, so clicking OK does not help while the app is running.
+Killing `simulator.exe` clears it.
+
+Also removed the app id from `%APPDATA%\Garmin\ConnectIQ\simulator.ini`, which
+makes the simulator reload the last app on start and re-raise the dialog before
+any test runs. That is a hypothesis, not yet confirmed.
+
+`bisect-tests.ps1` runs each test alone with a timeout: every one of the 117
+hangs, so this is not a single hanging test — the runner is blocked before any
+assertion executes.
+
 ## What works
 
 - Master is green: PWA lint + tests, Android unit tests + debug APK (CI), and the
   watch app compiles to `Strive-fenix847mm.prg`.
 - Phone app on the Pixel 9 Pro: Home shows engine-ranked suggestions with real
   imported history ("Overhead Press 50.0 kg, shoulders rested 16 days").
-- Watch app sideloaded: Home renders, "Free training" opens, and the phone found
-  the watch (`fenix 8 - 47mm, AMOLED`, Connected, "Strive app on watch:
-  installed"). So the bus, the app id and the pairing all work.
+- Watch app sideloaded: the free-training loop runs end to end — pick, set sheet,
+  rest with heart rate, continue prompt, summary.
 
-## The bug
+## The original bug report (kept for the record)
 
-Anything past the picker's first screen kills the app on the watch: the Connect
-IQ icon with an exclamation mark. Pressing DOWN in the picker does it, and START
-does it. Nothing has produced an error message yet.
+Anything past the picker's first screen killed the app: the Connect IQ icon with
+an exclamation mark. Pressing DOWN in the picker did it, and START did it.
+Nothing produced an error message.
 
 ## What was ruled out, and how
 
